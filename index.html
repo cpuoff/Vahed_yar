@@ -22,19 +22,29 @@
 <div class="top-zone">
 <header class="top">
   <div class="top-inner">
-    <div class="header-brand">
-      <div class="brand-logo"><img src="icon_192.png" alt="واحد یار" /></div>
-
-      <div>
-        <h1>واحد یار</h1>
-        <div class="header-sub">مدیریت هوشمند چارت و دروس ترمیک</div>
-      </div>
-    </div>
+    <!-- راست: منوی همبرگری -->
     <button id="menuToggleBtn" class="icon-btn" aria-label="منو">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
         <line x1="3" y1="6" x2="21" y2="6"></line>
         <line x1="3" y1="12" x2="21" y2="12"></line>
         <line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+    </button>
+
+    <!-- وسط: لوگو و عنوان -->
+    <div class="header-brand">
+      <div class="brand-logo"><img src="icon_192.png" alt="واحد یار" /></div>
+      <div class="header-text">
+        <h1>واحد یار</h1>
+        <div class="header-sub">مدیریت هوشمند چارت و دروس ترمیک</div>
+      </div>
+    </div>
+
+    <!-- چپ: تنظیمات و ابزارها -->
+    <button id="settingsBtn" class="icon-btn" aria-label="تنظیمات و ابزارها">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
       </svg>
     </button>
   </div>
@@ -55,8 +65,7 @@
     <button data-tab="general">دروس عمومی</button>
   </nav>
     <div class="sub-bar" id="elec-subbar">
-      <button class="sub-pill active" data-sub="common">دروس مشترک</button>
-      <button class="sub-pill" data-sub="elec">الکترونیک</button>
+      <button class="sub-pill active" data-sub="elec">الکترونیک</button>
       <button class="sub-pill" data-sub="power">قدرت</button>
     </div>
 
@@ -69,6 +78,7 @@
       داده‌های این بخش از روی درختواره‌های «رشته مهندسی برق - گرایش الکترونیک» و «گرایش سیستم‌های انرژی الکتریکی (قدرت)»، مصوبه ۱۷۹ مورخ ۱۴۰۳/۰۴/۱۰، دانشگاه آزاد اسلامی واحد تهران شمال استخراج شده است.
     </div>
     <div id="elec-track-note" class="track-note"></div>
+    <div id="elec-lock-box" class="lock-box" style="display:none;"></div>
     <div id="elec-summary"></div>
     <div id="elec-groups"></div>
   </section>
@@ -103,7 +113,6 @@
     <div class="modal-body">
       <div class="toolbar">
         <button id="menuSuggestBtn" class="tool-btn primary">⚡ پیشنهاد واحد این ترم</button>
-        <button id="menuSettingsBtn" class="tool-btn">⚙ تنظیمات و ابزارها</button>
       </div>
     </div>
   </div>

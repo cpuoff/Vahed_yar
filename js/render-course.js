@@ -81,7 +81,9 @@ function renderCourseRow(course, courses, passedSet, setKey){
   const isCurrent = status==='current';
   const lt = lockedTrack();
   const trackLocked = !!(course.trk && lt && lt !== course.trk && !passed);   // گرایش دیگه قفل شده
-  div.className = 'course' + (passed ? ' is-passed' : '') + (isCurrent ? ' is-current' : '') + (setKey==='elec' ? ' tk-' + (course.trk || 'common') : '');
+  // کل تبِ گرایشِ قفل‌شده غیرفعاله (به‌جز برداشتن تیک درس‌های اختصاصیِ خودِ همون تب، برای رفع تداخل دو گرایش)
+  const viewLocked = !!(setKey==='elec' && isViewLocked() && !(passed && course.trk === state.elecSub));
+  div.className = 'course' + (viewLocked ? ' view-locked' : '') + (passed ? ' is-passed' : '') + (isCurrent ? ' is-current' : '') + (setKey==='elec' ? ' tk-' + (course.trk || 'common') : '');
 
   const stamp = document.createElement('div');
   stamp.className = 'stamp';
@@ -91,9 +93,13 @@ function renderCourseRow(course, courses, passedSet, setKey){
     stamp.classList.add('disabled');
     stamp.title = 'مخصوص گرایش ' + TRACK_LABEL[course.trk] + ' - قفل شده';
   }
+  if(viewLocked){
+    stamp.classList.add('disabled');
+    stamp.title = 'این تب مال گرایش دیگه‌ست - قفل شده';
+  }
   stamp.addEventListener('click', (e)=>{
     e.stopPropagation();
-    if(trackLocked) return;
+    if(trackLocked || viewLocked) return;
     const set = state[setKey];
     if(set.has(course.id)) set.delete(course.id);
     else { set.add(course.id); state.current.delete(course.id); }
@@ -154,7 +160,7 @@ function renderCourseRow(course, courses, passedSet, setKey){
 
   metaBadges.appendChild(units);
   metaBadges.appendChild(badge);
-  if(!passed && (!trackLocked || isCurrent)){
+  if(!viewLocked && !passed && (!trackLocked || isCurrent)){
     const curBtn = document.createElement('button');
     curBtn.type = 'button';
     curBtn.className = 'c-cur-btn' + (isCurrent ? ' on' : '');
@@ -218,6 +224,7 @@ function renderCourseRow(course, courses, passedSet, setKey){
     input.type = 'number';
     input.min = '0'; input.max = '20'; input.step = '0.25';
     input.className = 'grade-input';
+    if(viewLocked) input.disabled = true;
     input.placeholder = '-';
     const existing = state.grades[course.id];
     if(typeof existing === 'number') input.value = existing;

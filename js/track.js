@@ -18,4 +18,7 @@ function hasBothTracks(){
 function currentTrack(){ return lockedTrack() || state.trackPref || 'elec'; }
 function trackGroups(){ const t=currentTrack(); return ALL_ELEC_GROUPS.filter(g=>!g.virtual && (!g.trk || g.trk===t)); }
 function trackCourses(){ const t=currentTrack(); return ELEC_COURSES.filter(c=>!c.trk || c.trk===t); }
-function viewGroups(){ const v=state.elecSub; return ALL_ELEC_GROUPS.filter(g=> v==='common' ? !g.trk : g.trk===v); }  // مشترک: گروه‌های بدون trk (+ گروه‌های virtual)
+// هر تب (الکترونیک/قدرت) = گروه‌های مشترک + گروه‌های اختصاصی همون گرایش
+function viewGroups(){ const v=state.elecSub; return ALL_ELEC_GROUPS.filter(g=> !g.virtual && (!g.trk || g.trk===v)); }
+// اگه گرایش قفل شده و تب فعلی مال گرایش دیگه‌ست، این تب «غیرفعال» حساب می‌شه
+function isViewLocked(){ const lt=lockedTrack(); return !!(lt && state.elecSub && state.elecSub !== lt); }

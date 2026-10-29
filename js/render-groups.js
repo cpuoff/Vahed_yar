@@ -1,4 +1,4 @@
-function renderGroups(containerId, groups, courses, passedSet, setKey, hideShared){
+function renderGroups(containerId, groups, courses, passedSet, setKey){
   const container = document.getElementById(containerId);
   container.innerHTML = '';
   
@@ -58,7 +58,6 @@ function renderGroups(containerId, groups, courses, passedSet, setKey, hideShare
     
     group.ids.forEach(id=>{
       const course = byId(courses, id);
-      if(hideShared && !course.trk) return;   // درس مشترک فقط تو تب «دروس مشترک» نشون داده می‌شه
       body.appendChild(renderCourseRow(course, courses, passedSet, setKey));
     });
 

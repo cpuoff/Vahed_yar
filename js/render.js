@@ -8,6 +8,18 @@ function renderTrackNote(){
   else msg = 'هنوز درس اختصاصی هیچ گرایشی رو نگذرونده‌ای؛ آمار و پیشنهادها بر اساس گرایش ' + TRACK_LABEL[currentTrack()] + ' حساب می‌شه (آخرین گرایشی که بازش کردی).';
   el.textContent = msg;
   el.className = 'track-note' + (hasBothTracks() ? ' warn' : '');
+
+  // باکس قرمز: وقتی تب گرایشِ قفل‌نشده باز باشه
+  const box = document.getElementById('elec-lock-box');
+  if(isViewLocked()){
+    box.textContent = '⛔ با توجه به درس‌هایی که پاس کردی، گرایش تو «' + TRACK_LABEL[lt] + '» است و نمی‌تونی از تب «' + TRACK_LABEL[state.elecSub] + '» چیزی برداری.';
+    box.style.display = 'block';
+    if(!hasBothTracks()) el.style.display = 'none';   // پیام عادی تکراریه
+    else el.style.display = '';
+  }else{
+    box.style.display = 'none';
+    el.style.display = '';
+  }
 }
 
 function renderAll(){
@@ -16,7 +28,7 @@ function renderAll(){
   renderTrackNote();
   renderSummary('elec-summary', trackGroups(), trackCourses(), state.elec, 'برق-' + TRACK_LABEL[currentTrack()]);
   renderSuggestions('suggest-elec', trackGroups(), trackCourses(), state.elec, 'elec', undefined, 'برق - ' + TRACK_LABEL[currentTrack()]);
-  renderGroups('elec-groups', viewGroups(), ELEC_COURSES, state.elec, 'elec', state.elecSub !== 'common');
+  renderGroups('elec-groups', viewGroups(), ELEC_COURSES, state.elec, 'elec');
 
   renderSummary('islamic-summary', ISLAMIC_GROUPS, ISLAMIC_COURSES, state.islamic, 'معارف اسلامی');
   renderSuggestions('suggest-islamic', ISLAMIC_GROUPS, ISLAMIC_COURSES, state.islamic, 'islamic',

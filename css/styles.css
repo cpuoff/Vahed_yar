@@ -70,16 +70,19 @@
   .top-inner {
     max-width: 860px;
     margin: 0 auto;
-    display: flex;
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr) 38px;   /* راست: همبرگری | وسط: برند | چپ: تنظیمات */
     align-items: center;
-    justify-content: space-between;
-    gap: 12px;
+    gap: 8px;
   }
   .header-brand {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 10px;
+    min-width: 0;
   }
+  .header-text { text-align: center; min-width: 0; }
   .brand-logo {
     width: 34px;
     height: 34px;
@@ -671,6 +674,8 @@
     .stat-val { font-size: 16px; }
     .c-top { flex-direction: column; align-items: flex-start; }
     .c-badges { width: 100%; justify-content: space-between; margin-top: 2px; }
+    .header-brand { gap: 8px; }
+    .header-sub { font-size: 10.5px; }
   }
 
 
@@ -687,8 +692,7 @@
 .tk-elec   { --tc: var(--c-elec);   --tc-bg: var(--c-elec-bg); }
 .tk-power  { --tc: var(--c-power);  --tc-bg: var(--c-power-bg); }
 
-/* زیرتب‌ها */
-.sub-pill[data-sub="common"] { --tc: var(--c-common); --tc-bg: var(--c-common-bg); }
+/* زیرتب‌ها (الکترونیک / قدرت) */
 .sub-pill[data-sub="elec"]   { --tc: var(--c-elec);   --tc-bg: var(--c-elec-bg); }
 .sub-pill[data-sub="power"]  { --tc: var(--c-power);  --tc-bg: var(--c-power-bg); }
 .sub-pill { border-color: var(--tc-bg); color: var(--tc); background: var(--tc-bg); opacity: 0.75; }
@@ -736,3 +740,19 @@ details.group.tk-common .bar-fill, details.group.tk-elec .bar-fill, details.grou
 }
 .page-body { max-width: 860px; margin: 0 auto; padding: 14px 16px 40px; }
 .page-body .suggest-box { margin-bottom: 14px; }
+
+/* باکس قرمز: تب گرایشِ قفل‌شده */
+.lock-box {
+  font-size: 12.5px; font-weight: 700; line-height: 1.8; color: #b91c1c; background: #fef2f2;
+  border: 1px solid #fecaca; border-inline-start: 4px solid #dc2626;
+  border-radius: var(--radius-md); padding: 10px 12px; margin-bottom: 12px;
+}
+
+/* آیتم‌های تبِ قفل‌شده: خاکستری و غیرقابل انتخاب (دکمه‌ی ⋮ برای دیدن پیش‌نیازها فعال می‌مونه) */
+.course.view-locked { background: #f1f5f9; filter: grayscale(1); opacity: 0.55; box-shadow: none; }
+.course.view-locked:hover { background: #f1f5f9; }
+.course.view-locked .stamp { cursor: not-allowed; }
+.course.view-locked .stamp:hover { border-color: #cbd5e1; }
+.course.view-locked .c-title { cursor: not-allowed; }
+.course.view-locked.is-passed .stamp { background: #94a3b8; border-color: #94a3b8; }
+details.group.tk-common .course.view-locked, details.group .course.view-locked { box-shadow: none; }

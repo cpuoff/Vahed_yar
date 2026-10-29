@@ -13,7 +13,6 @@ document.getElementById('closeMenuBtn').addEventListener('click', closeMenu);
 navMenu.addEventListener('click', (e)=>{ if(e.target === navMenu) closeMenu(); });
 
 document.getElementById('menuSuggestBtn').addEventListener('click', ()=>{ closeMenu(); openSuggestPage(); });
-document.getElementById('menuSettingsBtn').addEventListener('click', ()=>{ closeMenu(); openSettings(); });
 
 // صفحه‌ی پیشنهاد با هش #suggest باز می‌شه تا دکمه‌ی بازگشت گوشی هم کار کنه
 let suggestPushed = false;

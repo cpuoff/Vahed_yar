@@ -13,7 +13,7 @@ document.querySelectorAll('nav.tabs button').forEach(btn=>{
 document.querySelectorAll('.sub-pill').forEach(b=>{
   b.addEventListener('click', ()=>{
     state.elecSub = b.dataset.sub;
-    if(b.dataset.sub !== 'common') state.trackPref = b.dataset.sub;
+    state.trackPref = b.dataset.sub;
     saveState();
     renderAll();
   });
