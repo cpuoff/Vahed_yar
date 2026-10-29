@@ -1,4 +1,4 @@
-/* ============================= TABS & FILTERS ============================= */
+/* ============================= TABS ============================= */
 
 document.querySelectorAll('nav.tabs button').forEach(btn=>{
   btn.addEventListener('click', ()=>{
@@ -15,15 +15,6 @@ document.querySelectorAll('.sub-pill').forEach(b=>{
     state.elecSub = b.dataset.sub;
     if(b.dataset.sub !== 'common') state.trackPref = b.dataset.sub;
     saveState();
-    renderAll();
-  });
-});
-
-document.querySelectorAll('.filter-pill').forEach(pill=>{
-  pill.addEventListener('click', ()=>{
-    document.querySelectorAll('.filter-pill').forEach(p=>p.classList.remove('active'));
-    pill.classList.add('active');
-    activeFilter = pill.dataset.filter;
     renderAll();
   });
 });

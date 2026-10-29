@@ -40,4 +40,3 @@ const state = {
 };
 const COURSES_BY_KEY = { elec: ELEC_COURSES, islamic: ISLAMIC_COURSES, general: GENERAL_COURSES };
 
-let activeFilter = 'all';

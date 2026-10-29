@@ -47,7 +47,7 @@ function buildSuggestions(groups, courses, passedSet, dismissedSet){
   return filtered.slice(0,6);
 }
 
-function renderSuggestions(containerId, groups, courses, passedSet, key, capNote){
+function renderSuggestions(containerId, groups, courses, passedSet, key, capNote, title){
   const container = document.getElementById(containerId);
   const top = buildSuggestions(groups, courses, passedSet, dismissed[key]);
   container.innerHTML = '';
@@ -58,7 +58,7 @@ function renderSuggestions(containerId, groups, courses, passedSet, key, capNote
       <div class="suggest-title-wrap">
         <div class="suggest-icon">⚡</div>
         <div>
-          <h2 class="suggest-h2">پیشنهاد هوشمند این ترم</h2>
+          <h2 class="suggest-h2">${escapeHtml(title || 'پیشنهاد هوشمند این ترم')}</h2>
           <p class="suggest-sub">${escapeHtml(capNote || 'بر اساس چارت، پیش‌نیازها و سهمیه باقی‌مانده مرتب‌شده است.')}</p>
         </div>
       </div>

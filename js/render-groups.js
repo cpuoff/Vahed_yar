@@ -56,22 +56,11 @@ function renderGroups(containerId, groups, courses, passedSet, setKey, hideShare
     const body = document.createElement('div');
     body.className = 'g-body';
     
-    let renderedCourses = 0;
     group.ids.forEach(id=>{
       const course = byId(courses, id);
       if(hideShared && !course.trk) return;   // درس مشترک فقط تو تب «دروس مشترک» نشون داده می‌شه
-      const status = courseStatus(course, passedSet);
-      if(activeFilter !== 'all' && status !== activeFilter) return;
-      renderedCourses++;
       body.appendChild(renderCourseRow(course, courses, passedSet, setKey));
     });
-
-    if(activeFilter !== 'all' && renderedCourses === 0) {
-      const emptyMsg = document.createElement('div');
-      emptyMsg.className = 'group-empty-filter';
-      emptyMsg.textContent = 'درسی با این وضعیت در این گروه یافت نشد.';
-      body.appendChild(emptyMsg);
-    }
 
     details.appendChild(body);
     container.appendChild(details);

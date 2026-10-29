@@ -249,48 +249,6 @@
   }
 
   /* FILTER PILLS */
-  .filter-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 16px;
-    overflow-x: auto;
-    padding-bottom: 2px;
-  }
-  .filter-pills {
-    display: flex;
-    gap: 6px;
-    flex-wrap: nowrap;
-    width: 100%;
-  }
-  .filter-pill {
-    flex: 1;
-    border: 1px solid var(--border);
-    background: var(--bg-surface);
-    color: var(--text-muted);
-    padding: 7px 10px;
-    border-radius: var(--radius-sm);
-    font-family: inherit;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: all 0.15s ease;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-  }
-  .filter-pill:hover {
-    background: var(--bg-subtle);
-    color: var(--text-main);
-  }
-  .filter-pill.active {
-    background: var(--text-main);
-    color: #ffffff;
-    border-color: var(--text-main);
-  }
 
   /* STICKY HANDOFF: header sticks over the dashboard, then tabs+filters take over */
   .top-zone { position: relative; }
@@ -305,7 +263,6 @@
     padding-bottom: 1px;
   }
   .sticky-nav nav.tabs { margin-bottom: 10px; }
-  .sticky-nav .filter-bar { margin-bottom: 0; padding-bottom: 10px; box-shadow: 0 6px 6px -6px rgba(15,23,42,0.12); }
 
   /* SUB-TABS (مشترک / الکترونیک / قدرت) */
   .sub-bar { display: flex; gap: 6px; margin-bottom: 10px; }
@@ -560,12 +517,6 @@
   }
   .grade-input:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
 
-  .group-empty-filter {
-    font-size: 12px;
-    color: var(--text-subtle);
-    padding: 10px 4px;
-    text-align: center;
-  }
 
   /* DISCLAIMER */
   .disclaimer {
@@ -757,7 +708,6 @@ details.group.tk-common .bar-fill, details.group.tk-elec .bar-fill, details.grou
   border-radius: 999px; cursor: pointer; white-space: nowrap;
 }
 .c-cur-btn.on { background: var(--c-current); border-color: var(--c-current); color: #fff; }
-.filter-pill[data-filter="current"].active { background: var(--c-current); border-color: var(--c-current); color: #fff; }
 .cur-sub { color: var(--c-current); font-weight: 700; }
 
 /* یادداشت گرایش فعلی */
@@ -766,5 +716,23 @@ details.group.tk-common .bar-fill, details.group.tk-elec .bar-fill, details.grou
 /* فشرده‌تر کردن بخش ثابت بالای صفحه (موبایل) */
 .sticky-nav nav.tabs { margin-bottom: 6px; }
 .sticky-nav .sub-bar { margin-bottom: 6px; }
-.sticky-nav .filter-bar { padding-bottom: 6px; }
 .sub-pill { padding: 5px 8px; }
+
+/* بخش ثابت بالا: بعد از حذف نوار فیلتر، سایه به خود sticky-nav رفت */
+.sticky-nav { padding-bottom: 8px; box-shadow: 0 6px 6px -6px rgba(15,23,42,0.12); }
+.stamp.disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* صفحه‌ی پیشنهاد (از منوی همبرگری) */
+.page-view { position: fixed; inset: 0; z-index: 50; background: var(--bg-app); overflow-y: auto; }
+.page-bar {
+  position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 10px;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) 14px 10px; background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+}
+.page-bar h2 { margin: 0; font-size: 16px; font-weight: 800; }
+.page-back {
+  border: 1px solid var(--border); background: var(--bg-surface); color: inherit; width: 36px; height: 36px;
+  border-radius: 10px; font-size: 18px; cursor: pointer; font-family: inherit;
+}
+.page-body { max-width: 860px; margin: 0 auto; padding: 14px 16px 40px; }
+.page-body .suggest-box { margin-bottom: 14px; }

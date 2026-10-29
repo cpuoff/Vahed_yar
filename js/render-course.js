@@ -79,14 +79,21 @@ function renderCourseRow(course, courses, passedSet, setKey){
   const passed = status==='passed';
   const div = document.createElement('div');
   const isCurrent = status==='current';
+  const lt = lockedTrack();
+  const trackLocked = !!(course.trk && lt && lt !== course.trk && !passed);   // گرایش دیگه قفل شده
   div.className = 'course' + (passed ? ' is-passed' : '') + (isCurrent ? ' is-current' : '') + (setKey==='elec' ? ' tk-' + (course.trk || 'common') : '');
 
   const stamp = document.createElement('div');
   stamp.className = 'stamp';
   stamp.title = passed ? 'علامت‌گذاری به‌عنوان خوانده‌نشده' : 'علامت‌گذاری به‌عنوان گذرانده';
   stamp.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+  if(trackLocked){
+    stamp.classList.add('disabled');
+    stamp.title = 'مخصوص گرایش ' + TRACK_LABEL[course.trk] + ' - قفل شده';
+  }
   stamp.addEventListener('click', (e)=>{
     e.stopPropagation();
+    if(trackLocked) return;
     const set = state[setKey];
     if(set.has(course.id)) set.delete(course.id);
     else { set.add(course.id); state.current.delete(course.id); }
@@ -147,7 +154,7 @@ function renderCourseRow(course, courses, passedSet, setKey){
 
   metaBadges.appendChild(units);
   metaBadges.appendChild(badge);
-  if(!passed){
+  if(!passed && (!trackLocked || isCurrent)){
     const curBtn = document.createElement('button');
     curBtn.type = 'button';
     curBtn.className = 'c-cur-btn' + (isCurrent ? ' on' : '');

@@ -24,8 +24,9 @@ js/
   suggestions.js      پیشنهاد هوشمند این ترم
   render.js           renderAll و یادداشت گرایش
   chart-export.js     خروجی PDF/چاپ کل چارت
-  ui-tabs.js          تب‌ها، زیرتب‌ها، فیلترها
-  ui-settings.js      منوی تنظیمات
+  ui-tabs.js          تب‌ها و زیرتب‌ها
+  ui-settings.js      مودال تنظیمات
+  ui-menu.js          منوی همبرگری + صفحه‌ی پیشنهاد واحد (#suggest)
   actions.js          ریست، خروجی/ورودی بکاپ JSON
   main.js             رندر اولیه + ثبت service worker
 ```

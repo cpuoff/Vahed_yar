@@ -30,10 +30,11 @@
         <div class="header-sub">مدیریت هوشمند چارت و دروس ترمیک</div>
       </div>
     </div>
-    <button id="menuToggleBtn" class="icon-btn" aria-label="تنظیمات و ابزارها">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="3"></circle>
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+    <button id="menuToggleBtn" class="icon-btn" aria-label="منو">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="3" y1="6" x2="21" y2="6"></line>
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
       </svg>
     </button>
   </div>
@@ -60,15 +61,6 @@
     </div>
 
   <!-- FILTER BAR -->
-  <div class="filter-bar">
-    <div class="filter-pills">
-      <button class="filter-pill active" data-filter="all">همه</button>
-      <button class="filter-pill" data-filter="avail">● قابل اخذ</button>
-      <button class="filter-pill" data-filter="locked">✗ غیرقابل اخذ</button>
-      <button class="filter-pill" data-filter="passed">✓ گذرانده</button>
-      <button class="filter-pill" data-filter="current">⏳ در حال گذراندن</button>
-    </div>
-  </div>
   </div>
 
   <!-- ELECTRONICS PANEL -->
@@ -78,7 +70,6 @@
     </div>
     <div id="elec-track-note" class="track-note"></div>
     <div id="elec-summary"></div>
-    <div id="elec-suggest"></div>
     <div id="elec-groups"></div>
   </section>
 
@@ -88,14 +79,12 @@
       طبق آیین‌نامه، هر ترم (حتی ترم آخر یا تابستان) فقط <b>۲ واحد</b> معارف اسلامی مجاز است، مگر با نظر مدیر گروه معارف که تا <b>۴ واحد</b> امکان‌پذیر است.
     </div>
     <div id="islamic-summary"></div>
-    <div id="islamic-suggest"></div>
     <div id="islamic-groups"></div>
   </section>
 
   <!-- GENERAL EDUCATION PANEL -->
   <section id="panel-general" class="panel">
     <div id="general-summary"></div>
-    <div id="general-suggest"></div>
     <div id="general-groups"></div>
   </section>
   
@@ -103,6 +92,35 @@
     <span class="eyebrow">● پشتیبانی: <a href="https://t.me/cpuoff" target="_blank">@cpuoff</a></span>
   </p>
 </div>
+
+<!-- HAMBURGER MENU -->
+<div id="navMenu" class="modal-overlay" style="display:none;">
+  <div class="modal-sheet">
+    <div class="modal-head">
+      <h3>منو</h3>
+      <button id="closeMenuBtn" class="close-btn" aria-label="بستن">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="toolbar">
+        <button id="menuSuggestBtn" class="tool-btn primary">⚡ پیشنهاد واحد این ترم</button>
+        <button id="menuSettingsBtn" class="tool-btn">⚙ تنظیمات و ابزارها</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SUGGESTIONS PAGE (از منو باز می‌شه) -->
+<section id="page-suggest" class="page-view" style="display:none;">
+  <div class="page-bar">
+    <button id="suggestBackBtn" class="page-back" aria-label="بازگشت">→</button>
+    <h2>پیشنهاد واحد این ترم</h2>
+  </div>
+  <div class="page-body">
+    <div id="suggest-elec"></div>
+    <div id="suggest-islamic"></div>
+    <div id="suggest-general"></div>
+  </div>
+</section>
 
 <!-- SETTINGS & ACTIONS MODAL -->
 <div id="settingsModal" class="modal-overlay" style="display:none;">
@@ -150,6 +168,7 @@
 <script src="js/chart-export.js"></script>
 <script src="js/ui-tabs.js"></script>
 <script src="js/ui-settings.js"></script>
+<script src="js/ui-menu.js"></script>
 <script src="js/actions.js"></script>
 <script src="js/main.js"></script>
 </body>
