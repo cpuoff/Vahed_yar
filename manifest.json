@@ -1,0 +1,27 @@
+{
+  "name": "Vahed Yar",
+  "short_name": "Vahed Yar",
+  "description": "برنامه‌ریز دروس با چک‌کردن پیش‌نیازها و پیشنهاد دروس ترم",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f3efe4",
+  "theme_color": "#132a2e",
+  "dir": "rtl",
+  "lang": "fa",
+  "icons": [
+    {
+      "src": "icon_192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon_512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
