@@ -39,19 +39,19 @@ function groupsRequiredTotal(groups, courses){
 }
 
 function computeGPA(){
-  let weighted = 0, gradedUnits = 0, gradedCount = 0;
+  let weighted = 0, gradedUnits = 0, gradedCount = 0, ungradedCount = 0;
   Object.keys(COURSES_BY_KEY).forEach(key=>{
     COURSES_BY_KEY[key].forEach(c=>{
       if(!state[key].has(c.id)) return;
       const g = state.grades[c.id];
-      if(typeof g !== 'number' || isNaN(g)) return;
+      if(typeof g !== 'number' || isNaN(g)){ ungradedCount++; return; }
       const u = unitsOf(c);
       weighted += g*u;
       gradedUnits += u;
       gradedCount++;
     });
   });
-  return { gpa: gradedUnits ? (weighted/gradedUnits) : null, gradedUnits, gradedCount };
+  return { gpa: gradedUnits ? (weighted/gradedUnits) : null, gradedUnits, gradedCount, ungradedCount };
 }
 
 function coreqReachable(coId, passedSet){
