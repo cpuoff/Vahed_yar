@@ -24,7 +24,8 @@ document.getElementById('exportBtn').addEventListener('click', ()=>{
     grades: state.grades,
     dismissed: state.dismissed,
     profile: state.profile,
-    plan: state.plan
+    plan: state.plan,
+    termCaps: state.termCaps
   }, null, 2);
   const blob = new Blob([data], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -56,6 +57,7 @@ document.getElementById('importFile').addEventListener('change', (e)=>{
       state.dismissed = (parsed.dismissed && typeof parsed.dismissed === 'object' && !Array.isArray(parsed.dismissed)) ? parsed.dismissed : {};
       state.profile = sanitizeProfile(parsed.profile) || state.profile;   // بکاپ قدیمی پروفایل ندارد: پروفایل فعلی می‌ماند
       state.plan = sanitizePlan(parsed.plan);
+      if(parsed.termCaps !== undefined) state.termCaps = sanitizeTermCaps(parsed.termCaps);   // بکاپ قدیمی: ظرفیت‌های فعلی می‌مانند
       saveState();
       settingsModal.style.display = 'none';
       renderAll();

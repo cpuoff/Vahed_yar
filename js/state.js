@@ -14,6 +14,16 @@ function sanitizeProfile(p){
     assumeStatusPersists: !!p.assumeStatusPersists, projectCurrent: p.projectCurrent !== false
   };
 }
+// ظرفیت انتخابیِ هر نیمسال: { r8: 18, s1406: 6 } (r = نیمسال عادی، s = تابستان). مقدار نامعتبر دور ریخته می‌شود.
+function sanitizeTermCaps(o){
+  const out = {};
+  if(!o || typeof o !== 'object' || Array.isArray(o)) return out;
+  Object.keys(o).forEach(k=>{
+    const v = o[k];
+    if(/^(r\d{1,2}|s\d{4})$/.test(k) && typeof v === 'number' && isFinite(v) && v >= 0 && v <= 30) out[k] = Math.round(v);
+  });
+  return out;
+}
 // برنامهٔ ذخیره‌شده (ساختار نامعتبر → null)
 function sanitizePlan(p){
   if(!p || typeof p !== 'object' || Array.isArray(p) || p.version !== 1) return null;
@@ -23,7 +33,7 @@ function sanitizePlan(p){
 function loadState(){
   try{
     const raw = localStorage.getItem(STORAGE_KEY);
-    if(!raw) return {elec:[], islamic:[], general:[], current:[], grades:{}, trackPref:'elec', elecSub:'elec', dismissed:{}, profile:null, plan:null};
+    if(!raw) return {elec:[], islamic:[], general:[], current:[], grades:{}, trackPref:'elec', elecSub:'elec', dismissed:{}, profile:null, plan:null, termCaps:{}};
     const parsed = JSON.parse(raw);
     return {
       elec: parsed.elec || [],
@@ -35,9 +45,10 @@ function loadState(){
       elecSub: (parsed.elecSub === 'elec' || parsed.elecSub === 'power') ? parsed.elecSub : (parsed.trackPref || 'elec'),   // تب «مشترک» حذف شده
       dismissed: (parsed.dismissed && typeof parsed.dismissed === 'object' && !Array.isArray(parsed.dismissed)) ? parsed.dismissed : {},
       profile: sanitizeProfile(parsed.profile),
-      plan: sanitizePlan(parsed.plan)
+      plan: sanitizePlan(parsed.plan),
+      termCaps: sanitizeTermCaps(parsed.termCaps)
     };
-  }catch(e){ return {elec:[], islamic:[], general:[], current:[], grades:{}, trackPref:'elec', elecSub:'elec', dismissed:{}, profile:null, plan:null}; }
+  }catch(e){ return {elec:[], islamic:[], general:[], current:[], grades:{}, trackPref:'elec', elecSub:'elec', dismissed:{}, profile:null, plan:null, termCaps:{}}; }
 }
 function saveState(){
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -50,7 +61,8 @@ function saveState(){
     elecSub: state.elecSub,
     dismissed: state.dismissed,
     profile: state.profile,
-    plan: state.plan
+    plan: state.plan,
+    termCaps: state.termCaps
   }));
 }
 const _s = loadState();
@@ -64,7 +76,8 @@ const state = {
   elecSub: _s.elecSub || 'elec',
   dismissed: _s.dismissed || {},
   profile: _s.profile || null,
-  plan: _s.plan || null
+  plan: _s.plan || null,
+  termCaps: _s.termCaps || {}
 };
 const COURSES_BY_KEY = { elec: ELEC_COURSES, islamic: ISLAMIC_COURSES, general: GENERAL_COURSES };
 

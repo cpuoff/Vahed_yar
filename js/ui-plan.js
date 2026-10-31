@@ -126,7 +126,60 @@ function planDepLine(id, tIdx, terms, placedAt){
   return parts.map(x=>'<div class="r">' + x + '</div>').join('');
 }
 
-function planCourseItem(id, tIdx, terms, placedAt, meta){
+// چرا این درس زودتر نیامد (فقط برای درس‌هایی که در اولین نیمسال برنامه نیستند)
+function planDelayLine(id, delays){
+  const d = delays && delays[id];
+  if(!d) return '';
+  return '<div class="r plan-delay">⏱ در «' + escapeHtml(d.from) + '» نیامد: ' + escapeHtml(d.text) + '.</div>';
+}
+
+// کلید ظرفیت یک نیمسال (برنامه‌های قدیمی‌تر کلید ندارند)
+function planTermKeyOf(tm){ return tm.key || (tm.kind==='summer' ? 's' + tm.cal.year : 'r' + tm.termNo); }
+
+// بعد از تغییر ظرفیت، برنامه دوباره ساخته می‌شود؛ جای کارت روی صفحه ثابت می‌ماند تا انگشت گم نشود
+function planApplyCap(key, value){
+  const old = planBody.querySelector('[data-term-key="' + key + '"]');
+  const oldTop = old ? old.getBoundingClientRect().top : null;
+  planSetTermCap(key, value);
+  renderPlanPage();
+  const nw = planBody.querySelector('[data-term-key="' + key + '"]');
+  if(nw && oldTop !== null) pagePlan.scrollTop += nw.getBoundingClientRect().top - oldTop;
+}
+
+function planCapControl(tm){
+  const key = planTermKeyOf(tm);
+  const legal = tm.legalCap !== undefined ? tm.legalCap : tm.cap;
+  const sel = tm.selectedCap !== undefined ? tm.selectedCap : tm.cap;
+  const wrap = planEl('div', 'plan-capctl');
+  wrap.innerHTML = `
+    <div class="plan-cap-row">
+      <span class="plan-cap-l">ظرفیت انتخابی</span>
+      <div class="plan-stepper">
+        <button type="button" class="cap-btn" data-d="-1" aria-label="کاهش ظرفیت">−</button>
+        <input type="number" class="cap-input num" inputmode="numeric" min="0" max="${PLAN_MAX_USER_CAP}" value="${sel}" aria-label="ظرفیت انتخابی این نیمسال (واحد)">
+        <button type="button" class="cap-btn" data-d="1" aria-label="افزایش ظرفیت">+</button>
+      </div>
+      <span class="plan-cap-legal">سقف قانونی: <b class="num">${legal}</b> واحد</span>
+    </div>
+    <div class="plan-cap-sub">${tm.capAuto ? 'حالت خودکار' : '<button type="button" class="cap-reset">بازگشت به حالت خودکار</button>'}</div>
+    ${tm.overLegal ? '<div class="plan-note warn plan-cap-warn">ظرفیت انتخابی (' + sel + ') از سقف قانونی (' + legal + ') بیشتر است؛ سقف قانونی اعمال شد.</div>' : ''}`;
+  const input = wrap.querySelector('.cap-input');
+  const commit = v => {
+    const n = parseInt(planFaToEn(v), 10);
+    if(isNaN(n)) { input.value = sel; return; }
+    planApplyCap(key, Math.max(0, Math.min(PLAN_MAX_USER_CAP, n)));
+  };
+  wrap.querySelectorAll('.cap-btn').forEach(b=>b.addEventListener('click', ()=>{
+    const cur = parseInt(planFaToEn(input.value), 10);
+    commit((isNaN(cur) ? sel : cur) + parseInt(b.dataset.d, 10));
+  }));
+  input.addEventListener('change', ()=>commit(input.value));
+  const reset = wrap.querySelector('.cap-reset');
+  if(reset) reset.addEventListener('click', ()=>planApplyCap(key, null));
+  return wrap;
+}
+
+function planCourseItem(id, tIdx, terms, placedAt, meta, delays){
   const c = anyCourse(id);
   const item = planEl('div', 'suggest-item');
   if(!c){ item.innerHTML = '<div class="body"><div class="t">' + escapeHtml(id) + '</div></div>'; return item; }
@@ -138,7 +191,7 @@ function planCourseItem(id, tIdx, terms, placedAt, meta){
   const code = c.code ? ' <span class="s-units num">(' + escapeHtml(c.code) + ')</span>' : '';
   const side = planEl('div', 'plan-tags', tags.join(''));
   const body = planEl('div', 'body',
-    '<div class="t">' + escapeHtml(c.title) + code + ' <span class="s-units">- ' + unitsLabel(c) + '</span></div>' + planDepLine(id, tIdx, terms, placedAt));
+    '<div class="t">' + escapeHtml(c.title) + code + ' <span class="s-units">- ' + unitsLabel(c) + '</span></div>' + planDepLine(id, tIdx, terms, placedAt) + planDelayLine(id, delays));
   item.appendChild(side);
   item.appendChild(body);
   return item;
@@ -220,12 +273,13 @@ function renderPlanResult(plan, profile){
     const unitsTxt = tm.units + ' واحد' + (tm.exemptUnits ? ' (شامل ' + tm.exemptUnits + ' واحد مازاد بر سقف)' : '');
     box.appendChild(planEl('div', 'plan-term-stats',
       `<span>مجموع: <b class="num">${unitsTxt}</b></span>
-       <span>سقف مجاز: <b class="num">${tm.cap}</b> واحد</span>
        <span>باقی‌مانده پس از این نیمسال: <b class="num">${tm.remainingAfter}</b> واحد</span>`));
+    box.setAttribute('data-term-key', planTermKeyOf(tm));
+    box.appendChild(planCapControl(tm));
     box.appendChild(planEl('div', 'plan-muted plan-capnote', escapeHtml(tm.capNote) + (tm.needsApproval ? ' — نیازمند مجوز آموزش' : '')));
     const list = planEl('div', 'suggest-list');
     if(tm.courseIds.length===0) list.appendChild(planEl('div', 'suggest-empty', '<div>در این نیمسال درس جدیدی قابل برنامه‌ریزی نیست.</div>'));
-    tm.courseIds.forEach(id=>list.appendChild(planCourseItem(id, i, d.terms, placedAt, d.meta)));
+    tm.courseIds.forEach(id=>list.appendChild(planCourseItem(id, i, d.terms, placedAt, d.meta, d.delays)));
     box.appendChild(list);
     frag.appendChild(box);
   });
