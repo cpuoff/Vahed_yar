@@ -7,6 +7,8 @@ document.getElementById('resetBtn').addEventListener('click', ()=>{
     state.general.clear();
     state.current.clear();
     state.grades = {};
+    state.dismissed = {};
+    state.plan = null;   // برنامهٔ قبلی با تیک‌های جدید نمی‌خونه؛ پروفایل می‌مونه
     saveState();
     settingsModal.style.display = 'none';
     renderAll();
@@ -19,7 +21,10 @@ document.getElementById('exportBtn').addEventListener('click', ()=>{
     islamic:Array.from(state.islamic),
     general:Array.from(state.general),
     current:Array.from(state.current),
-    grades: state.grades
+    grades: state.grades,
+    dismissed: state.dismissed,
+    profile: state.profile,
+    plan: state.plan
   }, null, 2);
   const blob = new Blob([data], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -48,6 +53,9 @@ document.getElementById('importFile').addEventListener('change', (e)=>{
       state.general = new Set(parsed.general || []);
       state.current = new Set(parsed.current || []);
       state.grades = parsed.grades || {};
+      state.dismissed = (parsed.dismissed && typeof parsed.dismissed === 'object' && !Array.isArray(parsed.dismissed)) ? parsed.dismissed : {};
+      state.profile = sanitizeProfile(parsed.profile) || state.profile;   // بکاپ قدیمی پروفایل ندارد: پروفایل فعلی می‌ماند
+      state.plan = sanitizePlan(parsed.plan);
       saveState();
       settingsModal.style.display = 'none';
       renderAll();

@@ -27,15 +27,14 @@ function renderAll(){
 
   renderTrackNote();
   renderSummary('elec-summary', trackGroups(), trackCourses(), state.elec, 'برق-' + TRACK_LABEL[currentTrack()]);
-  renderSuggestions('suggest-elec', trackGroups(), trackCourses(), state.elec, 'elec', undefined, 'برق - ' + TRACK_LABEL[currentTrack()]);
   renderGroups('elec-groups', viewGroups(), ELEC_COURSES, state.elec, 'elec');
 
   renderSummary('islamic-summary', ISLAMIC_GROUPS, ISLAMIC_COURSES, state.islamic, 'معارف اسلامی');
-  renderSuggestions('suggest-islamic', ISLAMIC_GROUPS, ISLAMIC_COURSES, state.islamic, 'islamic',
-    'سقف انتخاب معارف در هر ترم عادی ۲ واحد است (با مجوز مدیر گروه حداکثر ۴ واحد).', 'معارف اسلامی');
   renderGroups('islamic-groups', ISLAMIC_GROUPS, ISLAMIC_COURSES, state.islamic, 'islamic');
 
   renderSummary('general-summary', GENERAL_GROUPS, GENERAL_COURSES, state.general, 'دروس عمومی');
-  renderSuggestions('suggest-general', GENERAL_GROUPS, GENERAL_COURSES, state.general, 'general', undefined, 'دروس عمومی');
   renderGroups('general-groups', GENERAL_GROUPS, GENERAL_COURSES, state.general, 'general');
+
+  renderTermSuggestions();
+  if(typeof renderPlanPage === 'function') renderPlanPage();
 }

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'daraskhtvareh-v8';
+const CACHE_NAME = 'daraskhtvareh-v10';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -17,11 +17,13 @@ const CORE_ASSETS = [
   './js/render-groups.js',
   './js/render-dashboard.js',
   './js/suggestions.js',
+  './js/planner.js',
   './js/render.js',
   './js/chart-export.js',
   './js/ui-tabs.js',
   './js/ui-settings.js',
   './js/ui-menu.js',
+  './js/ui-plan.js',
   './js/actions.js',
   './js/main.js'
 ];

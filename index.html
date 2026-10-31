@@ -113,6 +113,7 @@
     <div class="modal-body">
       <div class="toolbar">
         <button id="menuSuggestBtn" class="tool-btn primary">⚡ پیشنهاد واحد این ترم</button>
+        <button id="menuPlanBtn" class="tool-btn primary">🎓 برنامه تحصیلی من</button>
       </div>
     </div>
   </div>
@@ -125,9 +126,22 @@
     <h2>پیشنهاد واحد این ترم</h2>
   </div>
   <div class="page-body">
+    <div id="suggest-capacity"></div>
     <div id="suggest-elec"></div>
     <div id="suggest-islamic"></div>
     <div id="suggest-general"></div>
+    <div id="suggest-dismissed"></div>
+  </div>
+</section>
+
+<!-- PLAN PAGE (برنامه تحصیلی من؛ از منو باز می‌شه) -->
+<section id="page-plan" class="page-view" style="display:none;">
+  <div class="page-bar">
+    <button id="planBackBtn" class="page-back" aria-label="بازگشت">→</button>
+    <h2>برنامه تحصیلی من</h2>
+  </div>
+  <div class="page-body">
+    <div id="plan-body"></div>
   </div>
 </section>
 
@@ -173,11 +187,13 @@
 <script src="js/render-groups.js"></script>
 <script src="js/render-dashboard.js"></script>
 <script src="js/suggestions.js"></script>
+<script src="js/planner.js"></script>
 <script src="js/render.js"></script>
 <script src="js/chart-export.js"></script>
 <script src="js/ui-tabs.js"></script>
 <script src="js/ui-settings.js"></script>
 <script src="js/ui-menu.js"></script>
+<script src="js/ui-plan.js"></script>
 <script src="js/actions.js"></script>
 <script src="js/main.js"></script>
 </body>

@@ -47,4 +47,3 @@ function renderMasterSummary(){
   `;
 }
 
-const dismissed = { elec: new Set(), islamic: new Set(), general: new Set() };
