@@ -11,7 +11,7 @@ function sanitizeProfile(p){
   return {
     entryYear: y, entryTerm: p.entryTerm === 'bahman' ? 'bahman' : 'mehr', currentTerm: cur, lastGpa: gpa,
     includeSummer: !!p.includeSummer, summerInternship: !!p.summerInternship,
-    assumeStatusPersists: !!p.assumeStatusPersists, projectCurrent: p.projectCurrent !== false
+    assumeStatusPersists: !!p.assumeStatusPersists, projectCurrent: p.projectCurrent !== false, maarifLetter: !!p.maarifLetter
   };
 }
 // ظرفیت انتخابیِ هر نیمسال: { r8: 18, s1406: 6 } (r = نیمسال عادی، s = تابستان). مقدار نامعتبر دور ریخته می‌شود.

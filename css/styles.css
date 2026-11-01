@@ -844,3 +844,5 @@ details.group.tk-common .course.view-locked, details.group .course.view-locked {
 .cap-reset { border: none; background: none; color: var(--primary); font-family: inherit; font-size: 11.5px; font-weight: 700; cursor: pointer; padding: 2px 0; text-decoration: underline; }
 .plan-cap-warn { margin: 8px 0 0; }
 .plan-delay { color: #92400e; font-weight: 600; }
+.plan-under { color: #b91c1c; }
+.plan-cap-legal small { font-weight: 600; }

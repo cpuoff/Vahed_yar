@@ -37,7 +37,7 @@ function planStatusText(gpaVal){
   return g.known ? ('وضعیت: <b>' + g.label + '</b> — ' + caps[g.code]) : 'معدل وارد نشده؛ وضعیت عادی (سقف ۲۰ واحد) فرض می‌شود.';
 }
 function renderPlanForm(){
-  const p = state.profile || {entryYear:'', entryTerm:'mehr', currentTerm:'', lastGpa:null, includeSummer:false, summerInternship:false, assumeStatusPersists:false, projectCurrent:true};
+  const p = state.profile || {entryYear:'', entryTerm:'mehr', currentTerm:'', lastGpa:null, includeSummer:false, summerInternship:false, assumeStatusPersists:false, projectCurrent:true, maarifLetter:false};
   const track = suggestionTrack();
   const box = planBox('🧾', 'اطلاعات تحصیلی', 'فقط روی همین دستگاه ذخیره می‌شود.');
   const form = planEl('div', 'plan-form-wrap');
@@ -60,7 +60,9 @@ function renderPlanForm(){
     <label class="plan-check"><input type="checkbox" id="pf-summer"${p.includeSummer?' checked':''}>
       <span>ترم تابستان در برنامه استفاده شود <small>(اختیاری؛ در سنوات حساب نمی‌شود)</small></span></label>
     <label class="plan-check plan-sub" id="pf-intern-wrap"><input type="checkbox" id="pf-intern"${p.summerInternship?' checked':''}${p.includeSummer?'':' disabled'}>
-      <span>کارآموزی را در تابستان می‌گذرانم <small>(سقف تابستان ۸ واحد)</small></span></label>
+      <span>کارآموزی را در تابستان می‌گذرانم <small>(فقط تابستانِ بعد از نیمسال ۸ به بعد؛ مجموع واحدها با احتساب کارآموزی حداکثر ۶. کارآموزی و پروژه از نیمسال ۸ به بعد قابل‌اخذند، یا در ترم ۷ اگر همان ترم آخرت باشد)</small></span></label>
+    <label class="plan-check"><input type="checkbox" id="pf-letter"${p.maarifLetter?' checked':''}>
+      <span>«نامهٔ مدیرگروه معارف» را می‌گیرم <small>(تا ۴ واحد معارف در یک نیمسال، چه عادی چه تابستان؛ فقط در نیمسال‌هایی استفاده می‌شود که فارغ‌التحصیلی را زودتر کند)</small></span></label>
     <label class="plan-check"><input type="checkbox" id="pf-persist"${p.assumeStatusPersists?' checked':''}>
       <span>وضعیت مشروطی/معدل الف در همهٔ نیمسال‌های آینده هم ادامه دارد <small>(پیش‌فرض: فقط نیمسال اول برنامه)</small></span></label>
     <label class="plan-check"><input type="checkbox" id="pf-project"${p.projectCurrent!==false?' checked':''}>
@@ -85,7 +87,8 @@ function renderPlanForm(){
       includeSummer: $('pf-summer').checked,
       summerInternship: $('pf-summer').checked && $('pf-intern').checked,
       assumeStatusPersists: $('pf-persist').checked,
-      projectCurrent: $('pf-project').checked
+      projectCurrent: $('pf-project').checked,
+      maarifLetter: $('pf-letter').checked
     };
     if(prof.lastGpa !== null && isNaN(prof.lastGpa)) prof.lastGpa = -1;   // نامعتبر → خطای اعتبارسنجی
     const errs = planValidateProfile(prof);
@@ -150,6 +153,7 @@ function planCapControl(tm){
   const key = planTermKeyOf(tm);
   const legal = tm.legalCap !== undefined ? tm.legalCap : tm.cap;
   const sel = tm.selectedCap !== undefined ? tm.selectedCap : tm.cap;
+  const alt = tm.altCap !== undefined ? tm.altCap : legal;
   const wrap = planEl('div', 'plan-capctl');
   wrap.innerHTML = `
     <div class="plan-cap-row">
@@ -159,10 +163,11 @@ function planCapControl(tm){
         <input type="number" class="cap-input num" inputmode="numeric" min="0" max="${PLAN_MAX_USER_CAP}" value="${sel}" aria-label="ظرفیت انتخابی این نیمسال (واحد)">
         <button type="button" class="cap-btn" data-d="1" aria-label="افزایش ظرفیت">+</button>
       </div>
-      <span class="plan-cap-legal">سقف قانونی: <b class="num">${legal}</b> واحد</span>
+      <span class="plan-cap-legal">سقف قانونی: <b class="num">${legal}</b> واحد${alt > legal ? ' <small>(تا ' + alt + ' با معدل الف)</small>' : ''}</span>
     </div>
     <div class="plan-cap-sub">${tm.capAuto ? 'حالت خودکار' : '<button type="button" class="cap-reset">بازگشت به حالت خودکار</button>'}</div>
-    ${tm.overLegal ? '<div class="plan-note warn plan-cap-warn">ظرفیت انتخابی (' + sel + ') از سقف قانونی (' + legal + ') بیشتر است؛ سقف قانونی اعمال شد.</div>' : ''}`;
+    ${tm.needsAlef ? '<div class="plan-note warn plan-cap-warn">این ظرفیت فقط وقتی ممکن است که معدل نیمسال قبل از آن ≥ ۱۷ (معدل الف) شود؛ در برنامه همین فرض شده است.</div>' : ''}
+    ${tm.overLegal ? '<div class="plan-note error plan-cap-warn">ظرفیت انتخابی (' + sel + ') از حداکثر مجاز (' + alt + ') بیشتر است؛ ' + alt + ' اعمال شد.</div>' : ''}`;
   const input = wrap.querySelector('.cap-input');
   const commit = v => {
     const n = parseInt(planFaToEn(v), 10);
@@ -244,9 +249,22 @@ function renderPlanResult(plan, profile){
   }
   // معرفی به استاد
   if(d.instructorOption){
-    const names = d.instructorOption.courseIds.map(id=>{ const c = anyCourse(id); return c ? escapeHtml(c.title) : escapeHtml(id); }).join('، ');
+    const io = d.instructorOption;
+    const names = io.courseIds.map(id=>{ const c = anyCourse(id); return c ? escapeHtml(c.title) : escapeHtml(id); }).join('، ');
     frag.appendChild(planEl('div', 'plan-note info',
-      '<b>گزینهٔ جداگانه: «معرفی به استاد»</b><br>در آخرین نیمسال برنامه فقط <b class="num">' + d.instructorOption.units + '</b> واحد نظری مانده (' + names + '). ممکن است بتوانی مسیر «معرفی به استاد» را بررسی کنی؛ شرایطش را حتماً از آموزش بپرس. این گزینه به‌صورت خودکار وارد برنامه نشده است.'));
+      '<b>گزینهٔ جداگانه: «معرفی به استاد»</b><br>' +
+      'در آخرین نیمسال برنامه فقط <b class="num">' + io.units + '</b> واحد نظری مانده (' + names + '). اگر شرایط را داشته باشی، به‌جای ترم آخر عادی فقط نامه را از دانشکده/مدیرگروه می‌گیری و استاد یک روز برای امتحان خبرت می‌کند؛ نیازی به گذراندن کل ترم نیست. در این مسیر می‌توانی بعد از ثبت نمرات «' + escapeHtml(io.afterLabel) + '» (' + escapeHtml(io.earlierDateText) + ') فارغ‌التحصیل شوی.<br>' +
+      '• درخواست: ' + (io.units <= 4 ? 'مراجعهٔ مستقیم به <b>واحد امتحانات</b> (تا ۴ واحد)' : 'مراجعه به <b>کارشناس گروه</b> (۵ تا ۸ واحد)') + '<br>' +
+      '• شرط‌ها: همهٔ واحدهای ترم‌های قبل پاس و نمره‌ها ثبت‌شده باشد؛ هم‌زمان ترم عادی نداشته باشی؛ درس‌ها واحد عملی نداشته باشند (ورزش و کارآموزی قابل‌اخذ نیستند).<br>' +
+      '• هزینه: نصف شهریهٔ ثابت + شهریهٔ متغیر واحدها. این گزینه به‌صورت خودکار وارد برنامه نشده است.'));
+  }
+  // پیشنهاد نامهٔ معارف
+  if(d.letterHint){
+    const hint = planEl('div', 'plan-note info', '<b>پیشنهاد:</b> با «نامهٔ مدیرگروه معارف» ' + escapeHtml(d.letterHint.dateText) + ' به‌جای ' + escapeHtml(d.letterHint.oldDateText) + ' فارغ‌التحصیل می‌شوی. ');
+    const hb = planEl('button', 'tool-btn primary plan-inline-btn', 'روشن کردن نامهٔ معارف');
+    hb.addEventListener('click', ()=>{ state.profile = Object.assign({}, state.profile, {maarifLetter:true}); planRefresh(); renderPlanPage(); });
+    hint.appendChild(hb);
+    frag.appendChild(hint);
   }
 
   // نیمسال جاری
@@ -268,7 +286,7 @@ function renderPlanResult(plan, profile){
   d.terms.forEach((tm, i)=>tm.courseIds.forEach(id=>{ placedAt[id] = i; }));
   d.terms.forEach((tm, i)=>{
     const title = tm.kind==='summer' ? 'ترم تابستان (اختیاری)' : 'نیمسال ' + tm.termNo;
-    const sub = escapeHtml(tm.cal.label) + (tm.kind==='regular' ? ' · ' + escapeHtml(tm.cal.monthLabel) : '') + (tm.isLast ? ' · <b>ترم آخر</b>' : '');
+    const sub = escapeHtml(tm.cal.label) + (tm.kind==='regular' ? ' · ' + escapeHtml(tm.cal.monthLabel) : '') + (tm.isLast ? ' · <b>ترم آخر</b>' : '') + (tm.letter ? ' · <b>با نامهٔ مدیرگروه معارف</b>' : '') + (tm.beyond ? ' · <b class="plan-under">خارج از سنوات (بیش از ۱۲ نیمسال)</b>' : (tm.extension ? ' · <b class="plan-under">سنوات تمدیدی: درخواست + نرخ ورودی جدید</b>' : '')) + (tm.underMin ? ' · <b class="plan-under">کمتر از حداقل ۱۲ واحد</b>' : '');
     const box = planBox(tm.kind==='summer' ? '☀️' : '📅', title, sub);
     const unitsTxt = tm.units + ' واحد' + (tm.exemptUnits ? ' (شامل ' + tm.exemptUnits + ' واحد مازاد بر سقف)' : '');
     box.appendChild(planEl('div', 'plan-term-stats',
