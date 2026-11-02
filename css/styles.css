@@ -846,3 +846,23 @@ details.group.tk-common .course.view-locked, details.group .course.view-locked {
 .plan-delay { color: #92400e; font-weight: 600; }
 .plan-under { color: #b91c1c; }
 .plan-cap-legal small { font-weight: 600; }
+
+/* ===== جایگزینی درس + خروجی PDF برنامه ===== */
+.page-action { margin-inline-start: auto; border: 1px solid var(--primary-light); background: var(--primary-subtle); color: var(--primary-hover); height: 36px; padding: 0 14px; border-radius: 10px; font-family: inherit; font-size: 13px; font-weight: 800; cursor: pointer; }
+.page-action:active { background: var(--primary-light); }
+.plan-acts { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+.swap-btn { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--primary-light); background: var(--bg-surface); color: var(--primary); font-size: 17px; font-weight: 800; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; font-family: inherit; touch-action: manipulation; }
+.swap-btn:active { background: var(--primary-light); }
+.swap-btn.undo { color: #b45309; border-color: #fcd34d; }
+.plan-modal-back { position: fixed; inset: 0; z-index: 80; background: rgba(15,23,42,.45); display: flex; align-items: flex-end; justify-content: center; }
+.plan-modal { width: 100%; max-width: 560px; max-height: 82vh; overflow-y: auto; background: var(--bg-surface); border-radius: 18px 18px 0 0; padding: 14px 14px calc(14px + env(safe-area-inset-bottom, 0px)); box-shadow: 0 -8px 30px rgba(0,0,0,.2); }
+.plan-modal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 14.5px; }
+.plan-modal-x { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border); background: var(--bg-surface); cursor: pointer; font-family: inherit; }
+.plan-modal-sub { font-size: 12px; color: var(--text-muted); line-height: 1.9; margin: 6px 0 10px; }
+.plan-modal-list { display: flex; flex-direction: column; gap: 8px; }
+.plan-alt { text-align: right; width: 100%; border: 1px solid var(--border); background: var(--bg-subtle); border-radius: var(--radius-md); padding: 10px 12px; font-family: inherit; cursor: pointer; display: flex; flex-direction: column; gap: 4px; color: inherit; touch-action: manipulation; }
+.plan-alt:active, .plan-alt:hover { border-color: var(--primary); background: var(--primary-subtle); }
+.plan-alt-t { font-size: 13.5px; font-weight: 800; }
+.plan-alt-t small { color: var(--text-muted); font-weight: 600; }
+.plan-alt-s { font-size: 11.5px; color: var(--text-muted); line-height: 1.8; }
+

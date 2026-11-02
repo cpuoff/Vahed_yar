@@ -31,13 +31,8 @@ function planBox(icon, title, sub){
 }
 
 /* ---------------------------- فرم پروفایل ---------------------------- */
-function planStatusText(gpaVal){
-  const g = planGpaStatus(gpaVal);
-  const caps = {probation:'سقف ۱۴ واحد', alef:'تا ۲۴ واحد', normal:'سقف ۲۰ واحد'};
-  return g.known ? ('وضعیت: <b>' + g.label + '</b> — ' + caps[g.code]) : 'معدل وارد نشده؛ وضعیت عادی (سقف ۲۰ واحد) فرض می‌شود.';
-}
 function renderPlanForm(){
-  const p = state.profile || {entryYear:'', entryTerm:'mehr', currentTerm:'', lastGpa:null, includeSummer:false, summerInternship:false, assumeStatusPersists:false, projectCurrent:true, maarifLetter:false};
+  const p = state.profile || {entryYear:'', entryTerm:'mehr', currentTerm:'', includeSummer:false, summerInternship:false, projectCurrent:true, maarifLetter:false};
   const track = suggestionTrack();
   const box = planBox('🧾', 'اطلاعات تحصیلی', 'فقط روی همین دستگاه ذخیره می‌شود.');
   const form = planEl('div', 'plan-form-wrap');
@@ -52,10 +47,8 @@ function renderPlanForm(){
         </select></label>
       <label class="plan-field"><span>شمارهٔ نیمسال فعلی</span>
         <input id="pf-cur" class="plan-input num" type="text" inputmode="numeric" placeholder="مثلاً ۷" value="${p.currentTerm}"></label>
-      <label class="plan-field"><span>معدل نیمسال گذشته</span>
-        <input id="pf-gpa" class="plan-input num" type="text" inputmode="decimal" placeholder="مثلاً ۱۵.۵" value="${p.lastGpa===null?'':p.lastGpa}"></label>
     </div>
-    <div id="pf-status" class="plan-status">${planStatusText(p.lastGpa)}</div>
+    <div class="plan-status">ظرفیت هر نیمسال را از کارتِ همان نیمسال تعیین می‌کنی: تا ۲۰ واحد عادی، تا ۲۴ واحد اگر معدل الف شوی (یا ترم آخر). اگر مشروطی، ظرفیت را دستی تا ۱۴ کم کن.</div>
     <div class="plan-track">گرایش: <b>${escapeHtml(TRACK_LABEL[track])}</b> <span class="plan-muted">(از تنظیمات گرایش برنامه خوانده شد)</span></div>
     <label class="plan-check"><input type="checkbox" id="pf-summer"${p.includeSummer?' checked':''}>
       <span>ترم تابستان در برنامه استفاده شود <small>(اختیاری؛ در سنوات حساب نمی‌شود)</small></span></label>
@@ -63,8 +56,6 @@ function renderPlanForm(){
       <span>کارآموزی را در تابستان می‌گذرانم <small>(فقط تابستانِ بعد از نیمسال ۸ به بعد؛ مجموع واحدها با احتساب کارآموزی حداکثر ۶. کارآموزی و پروژه از نیمسال ۸ به بعد قابل‌اخذند، یا در ترم ۷ اگر همان ترم آخرت باشد)</small></span></label>
     <label class="plan-check"><input type="checkbox" id="pf-letter"${p.maarifLetter?' checked':''}>
       <span>«نامهٔ مدیرگروه معارف» را می‌گیرم <small>(تا ۴ واحد معارف در یک نیمسال، چه عادی چه تابستان؛ فقط در نیمسال‌هایی استفاده می‌شود که فارغ‌التحصیلی را زودتر کند)</small></span></label>
-    <label class="plan-check"><input type="checkbox" id="pf-persist"${p.assumeStatusPersists?' checked':''}>
-      <span>وضعیت مشروطی/معدل الف در همهٔ نیمسال‌های آینده هم ادامه دارد <small>(پیش‌فرض: فقط نیمسال اول برنامه)</small></span></label>
     <label class="plan-check"><input type="checkbox" id="pf-project"${p.projectCurrent!==false?' checked':''}>
       <span>ادامهٔ برنامه با فرض پاس شدن درس‌های ترم جاری <small>(درس جاری «پاس‌شده» حساب نمی‌شود؛ وابسته‌هایش با برچسب «مشروط» می‌آیند. خاموش = وابسته‌ها برنامه‌ریزی نمی‌شوند)</small></span></label>
     <div id="pf-errors" class="plan-note error" style="display:none"></div>
@@ -72,8 +63,6 @@ function renderPlanForm(){
   box.appendChild(form);
 
   const $ = id => form.querySelector('#' + id);
-  const readGpa = () => { const t = planFaToEn($('pf-gpa').value).trim(); return t==='' ? null : parseFloat(t); };
-  $('pf-gpa').addEventListener('input', ()=>{ const v = readGpa(); $('pf-status').innerHTML = planStatusText(isNaN(v) ? null : v); });
   $('pf-summer').addEventListener('change', ()=>{
     $('pf-intern').disabled = !$('pf-summer').checked;
     if(!$('pf-summer').checked) $('pf-intern').checked = false;
@@ -83,14 +72,11 @@ function renderPlanForm(){
       entryYear: parseInt(planFaToEn($('pf-year').value), 10),
       entryTerm: $('pf-term').value,
       currentTerm: parseInt(planFaToEn($('pf-cur').value), 10),
-      lastGpa: readGpa(),
       includeSummer: $('pf-summer').checked,
       summerInternship: $('pf-summer').checked && $('pf-intern').checked,
-      assumeStatusPersists: $('pf-persist').checked,
       projectCurrent: $('pf-project').checked,
       maarifLetter: $('pf-letter').checked
     };
-    if(prof.lastGpa !== null && isNaN(prof.lastGpa)) prof.lastGpa = -1;   // نامعتبر → خطای اعتبارسنجی
     const errs = planValidateProfile(prof);
     const errBox = $('pf-errors');
     if(errs.length){ errBox.innerHTML = errs.map(e=>'• ' + escapeHtml(e)).join('<br>'); errBox.style.display = 'block'; return; }
@@ -105,7 +91,6 @@ function renderPlanForm(){
 }
 
 /* ---------------------------- نمایش برنامه ---------------------------- */
-function planTermShort(t){ return t.kind==='summer' ? 'تابستان ' + t.cal.year : 'نیمسال ' + t.termNo; }
 
 function planDepLine(id, tIdx, terms, placedAt){
   const c = anyCourse(id);
@@ -136,17 +121,50 @@ function planDelayLine(id, delays){
   return '<div class="r plan-delay">⏱ در «' + escapeHtml(d.from) + '» نیامد: ' + escapeHtml(d.text) + '.</div>';
 }
 
-// کلید ظرفیت یک نیمسال (برنامه‌های قدیمی‌تر کلید ندارند)
-function planTermKeyOf(tm){ return tm.key || (tm.kind==='summer' ? 's' + tm.cal.year : 'r' + tm.termNo); }
 
-// بعد از تغییر ظرفیت، برنامه دوباره ساخته می‌شود؛ جای کارت روی صفحه ثابت می‌ماند تا انگشت گم نشود
-function planApplyCap(key, value){
+// بعد از هر ویرایش (ظرفیت/جایگزینی) برنامه دوباره ساخته می‌شود؛ جای کارت روی صفحه ثابت می‌ماند تا انگشت گم نشود
+function planKeepingCard(key, fn){
   const old = planBody.querySelector('[data-term-key="' + key + '"]');
   const oldTop = old ? old.getBoundingClientRect().top : null;
-  planSetTermCap(key, value);
+  const r = fn();
   renderPlanPage();
   const nw = planBody.querySelector('[data-term-key="' + key + '"]');
   if(nw && oldTop !== null) pagePlan.scrollTop += nw.getBoundingClientRect().top - oldTop;
+  return r;
+}
+function planApplyCap(key, value){ planKeepingCard(key, ()=>planSetTermCap(key, value)); }
+
+/* ---------------------------- جایگزینی درس ---------------------------- */
+function closeSwapModal(){ const m = document.getElementById('plan-swap-modal'); if(m) m.remove(); }
+function openSwapModal(tIdx, outId, alts){
+  closeSwapModal();
+  const d = state.plan.data, term = d.terms[tIdx], outC = anyCourse(outId);
+  const key = planTermKeyOf(term);
+  const back = planEl('div', 'plan-modal-back');
+  back.id = 'plan-swap-modal';
+  const box = planEl('div', 'plan-modal');
+  box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
+  box.innerHTML = '<div class="plan-modal-head"><b>جایگزینی «' + escapeHtml(outC ? outC.title : outId) + '»</b><button type="button" class="plan-modal-x" aria-label="بستن">✕</button></div>' +
+    '<p class="plan-modal-sub">یکی از درس‌های زیر را به‌جای این درس در «' + escapeHtml(planTermShort(term)) + '» بردار. اگر درسِ فعلی لازم باشد، در نیمسال‌های بعد دوباره گذاشته می‌شود.</p>';
+  const list = planEl('div', 'plan-modal-list');
+  alts.forEach(a=>{
+    const b = planEl('button', 'plan-alt');
+    b.type = 'button';
+    const where = a.where ? 'فعلاً در «' + escapeHtml(a.where) + '» است و به این نیمسال می‌آید' : 'در برنامه نیست؛ جایگزین می‌شود' + (a.sameGroup && (d.meta[outId] || {}).kind==='quota' ? ' و «' + escapeHtml(outC ? outC.title : outId) + '» دیگر لازم نیست' : '');
+    b.innerHTML = '<span class="plan-alt-t">' + escapeHtml(a.title) + ' <small>- ' + a.units + ' واحد</small></span>' +
+      '<span class="plan-alt-s">' + (a.sameGroup ? '<span class="tag quota">هم‌گروه</span> ' : '') + (a.kind==='mandatory' ? '<span class="tag mandatory">اجباری</span> ' : '') + where + '</span>';
+    b.addEventListener('click', ()=>{
+      closeSwapModal();
+      const ok = planKeepingCard(key, ()=>planApplySwap(key, outId, a.id));
+      if(!ok) alert('این جایگزینی اعمال نشد (با بقیهٔ شرایط برنامه جور درنیامد).');
+    });
+    list.appendChild(b);
+  });
+  box.appendChild(list);
+  back.appendChild(box);
+  back.addEventListener('click', e=>{ if(e.target === back) closeSwapModal(); });
+  box.querySelector('.plan-modal-x').addEventListener('click', closeSwapModal);
+  document.body.appendChild(back);
 }
 
 function planCapControl(tm){
@@ -184,7 +202,7 @@ function planCapControl(tm){
   return wrap;
 }
 
-function planCourseItem(id, tIdx, terms, placedAt, meta, delays){
+function planCourseItem(id, tIdx, terms, placedAt, meta, delays, data){
   const c = anyCourse(id);
   const item = planEl('div', 'suggest-item');
   if(!c){ item.innerHTML = '<div class="body"><div class="t">' + escapeHtml(id) + '</div></div>'; return item; }
@@ -194,11 +212,29 @@ function planCourseItem(id, tIdx, terms, placedAt, meta, delays){
   const term = terms[tIdx];
   if(m.exempt && term.exemptUnits > 0) tags.push('<span class="tag extra">مازاد بر سقف</span>');
   const code = c.code ? ' <span class="s-units num">(' + escapeHtml(c.code) + ')</span>' : '';
+  const swapIdx = (state.planSwaps || []).findIndex(r=>r.inn===id && r.key===planTermKeyOf(term));
+  if(swapIdx >= 0) tags.push('<span class="tag extra">جایگزین‌شده</span>');
   const side = planEl('div', 'plan-tags', tags.join(''));
   const body = planEl('div', 'body',
     '<div class="t">' + escapeHtml(c.title) + code + ' <span class="s-units">- ' + unitsLabel(c) + '</span></div>' + planDepLine(id, tIdx, terms, placedAt) + planDelayLine(id, delays));
   item.appendChild(side);
   item.appendChild(body);
+  // دکمه‌های جایگزینی / لغو
+  const acts = planEl('div', 'plan-acts');
+  const alts = data ? planAlternatives(data, tIdx, id) : [];
+  if(alts.length){
+    const sb = planEl('button', 'swap-btn', '⇄');
+    sb.type = 'button'; sb.title = 'جایگزینی این درس'; sb.setAttribute('aria-label', 'جایگزینی ' + c.title);
+    sb.addEventListener('click', ()=>openSwapModal(tIdx, id, alts));
+    acts.appendChild(sb);
+  }
+  if(swapIdx >= 0){
+    const ub = planEl('button', 'swap-btn undo', '↩');
+    ub.type = 'button'; ub.title = 'لغو این جایگزینی'; ub.setAttribute('aria-label', 'لغو جایگزینی ' + c.title);
+    ub.addEventListener('click', ()=>planKeepingCard(planTermKeyOf(term), ()=>planUndoSwap(swapIdx)));
+    acts.appendChild(ub);
+  }
+  if(acts.children.length) item.appendChild(acts);
   return item;
 }
 
@@ -217,7 +253,7 @@ function renderPlanResult(plan, profile){
 
   // خلاصه
   const t = d.totals;
-  const sum = planBox('📊', 'خلاصهٔ مسیر تا فارغ‌التحصیلی', 'گرایش ' + escapeHtml(TRACK_LABEL[d.track]) + ' · وضعیت: ' + escapeHtml(d.status.label));
+  const sum = planBox('📊', 'خلاصهٔ مسیر تا فارغ‌التحصیلی', 'گرایش ' + escapeHtml(TRACK_LABEL[d.track]));
   sum.id = 'plan-summary';
   const grad = d.graduation;
   const gradHtml = grad
@@ -246,6 +282,14 @@ function renderPlanResult(plan, profile){
     const wb = planEl('div', 'plan-notes');
     warns.forEach(w=>wb.appendChild(planEl('div', 'plan-note ' + w.level, escapeHtml(w.text))));
     frag.appendChild(wb);
+  }
+  // جایگزینی‌های اعمال‌شده
+  if(state.planSwaps && state.planSwaps.length){
+    const sw = planEl('div', 'plan-note info', '<b>جایگزینی‌های دستی: ' + state.planSwaps.length + '</b> — با دکمهٔ ↩ کنار هر درسِ جایگزین‌شده یکی‌یکی لغو می‌شوند. ');
+    const cb = planEl('button', 'tool-btn plan-inline-btn', 'حذف همهٔ جایگزینی‌ها');
+    cb.addEventListener('click', ()=>{ if(confirm('همهٔ جایگزینی‌ها برگردانده شود؟')){ planClearSwaps(); renderPlanPage(); } });
+    sw.appendChild(cb);
+    frag.appendChild(sw);
   }
   // معرفی به استاد
   if(d.instructorOption){
@@ -297,7 +341,7 @@ function renderPlanResult(plan, profile){
     box.appendChild(planEl('div', 'plan-muted plan-capnote', escapeHtml(tm.capNote) + (tm.needsApproval ? ' — نیازمند مجوز آموزش' : '')));
     const list = planEl('div', 'suggest-list');
     if(tm.courseIds.length===0) list.appendChild(planEl('div', 'suggest-empty', '<div>در این نیمسال درس جدیدی قابل برنامه‌ریزی نیست.</div>'));
-    tm.courseIds.forEach(id=>list.appendChild(planCourseItem(id, i, d.terms, placedAt, d.meta, d.delays)));
+    tm.courseIds.forEach(id=>list.appendChild(planCourseItem(id, i, d.terms, placedAt, d.meta, d.delays, d)));
     box.appendChild(list);
     frag.appendChild(box);
   });
@@ -310,6 +354,8 @@ function renderPlanResult(plan, profile){
 function renderPlanPage(){
   if(!pagePlan || pagePlan.style.display === 'none') return;
   planBody.innerHTML = '';
+  const pdfBtn = document.getElementById('planPdfBtn');
+  if(pdfBtn) pdfBtn.style.display = (state.profile && state.plan) ? '' : 'none';
   planBody.appendChild(renderPlanForm());
   if(state.profile && state.plan){
     planBody.appendChild(renderPlanResult(state.plan, state.profile));

@@ -15,8 +15,7 @@
 
 const PLAN_RULES = {
   regularBase: 20,        // سقف عادی ترم
-  probationCap: 14,       // مشروط (معدل < 12)
-  alefCap: 24,            // معدل الف (معدل ≥ 17)
+  alefCap: 24,            // بالاترین ظرفیت ترم عادی (فقط با معدل الف ممکن؛ کاربر خودش فرض می‌کند)
   lastTermCap: 24,        // ترم پایانی (از نیمسال finalFrom به بعد)
   finalFrom: 8,           // پروژه و کارآموزی از این نیمسال به بعد قابل اخذند
   lastTermMin: 7,         // ...یا از این نیمسال، اگر همین ترم آخرِ واقعیِ دانشجو باشد (مثلاً واحدهایش در ترم ۷ تمام شود)
@@ -29,8 +28,6 @@ const PLAN_RULES = {
   summerLastCap: 10,      // تابستانِ آخر (با مجوز آموزش)
   maarifPerTerm: 2,       // حداکثر واحد معارف در هر نیمسال
   maxRegularTerms: 12,    // سنوات کارشناسی پیوسته (تابستان حساب نمی‌شود)
-  probationBelow: 12,
-  alefFrom: 17,
   instructorMaxUnits: 8   // سقف واحد نظری برای بررسی «معرفی به استاد»
 };
 
@@ -53,12 +50,6 @@ const PLAN_MONTHS = ['فروردین','اردیبهشت','خرداد','تیر','
 
 function planFmtDate(d){ return d.d + ' ' + PLAN_MONTHS[d.m-1] + ' ' + d.y; }
 
-function planGpaStatus(gpa){
-  if(typeof gpa !== 'number' || isNaN(gpa)) return {code:'normal', known:false, label:'عادی (معدل وارد نشده)'};
-  if(gpa < PLAN_RULES.probationBelow) return {code:'probation', known:true, label:'مشروط'};
-  if(gpa >= PLAN_RULES.alefFrom) return {code:'alef', known:true, label:'معدل الف'};
-  return {code:'normal', known:true, label:'عادی'};
-}
 
 // تقویم نیمسال عادی شمارهٔ k (۱ = نیمسال ورود)
 function planTermCalendar(entryYear, entryTerm, k){
@@ -105,19 +96,17 @@ function planExpectedTerm(profile, today){
 // سقف مجاز یک نیمسال
 // cap = سقف بدون شرط، alt = بالاترین مقداری که ممکن است (با شرط معدل الف). فقط در ترم عادیِ غیرمشروط alt > cap است:
 // معدل نیمسال‌های آینده هنوز معلوم نیست، پس کاربر می‌تواند «فرض کند» معدل الف می‌شود و ببیند چطور می‌شود برداشت.
-function planCapFor(kind, isLast, status, internship){
-  const r = planCapForBase(kind, isLast, status, internship);
+function planCapFor(kind, isLast){
+  const r = planCapForBase(kind, isLast);
   r.alt = r.alt !== undefined ? r.alt : r.cap;
   return r;
 }
-function planCapForBase(kind, isLast, status, internship){
+function planCapForBase(kind, isLast){
   if(kind==='summer'){
     if(isLast) return {cap:PLAN_RULES.summerLastCap, exempt:false, needsApproval:true, note:'تابستانِ آخر: حداکثر ۱۰ واحد (با مراجعه به آموزش و دریافت مجوز)'};
     return {cap:PLAN_RULES.summerBase, exempt:true, needsApproval:false, note:'تابستان: سقف ۶ واحد'};
   }
-  if(status==='probation') return {cap:PLAN_RULES.probationCap, exempt:false, needsApproval:false, note:'مشروطی: سقف ۱۴ واحد (بدون هیچ استثنا)'};
   if(isLast) return {cap:PLAN_RULES.lastTermCap, exempt:false, needsApproval:false, note:'ترم آخر: سقف ۲۴ واحد (با رعایت شرایط آموزشی)'};
-  if(status==='alef') return {cap:PLAN_RULES.alefCap, exempt:true, needsApproval:false, note:'معدل الف: سقف ۲۴ واحد'};
   return {cap:PLAN_RULES.regularBase, alt:PLAN_RULES.alefCap, exempt:true, needsApproval:false, note:'سقف عادی ۲۰ واحد (تا ۲۴ واحد با معدل الف)'};
 }
 
@@ -126,7 +115,6 @@ function planValidateProfile(p){
   if(!(Number.isInteger(p.entryYear) && p.entryYear>=1380 && p.entryYear<=1460)) errors.push('سال ورود باید یک سال شمسی معتبر باشد (مثلاً ۱۴۰۲).');
   if(p.entryTerm!=='mehr' && p.entryTerm!=='bahman') errors.push('نیمسال ورود را انتخاب کن.');
   if(!(Number.isInteger(p.currentTerm) && p.currentTerm>=1 && p.currentTerm<=30)) errors.push('شمارهٔ نیمسال فعلی باید عددی بین ۱ تا ۳۰ باشد.');
-  if(p.lastGpa!==null && !(typeof p.lastGpa==='number' && p.lastGpa>=0 && p.lastGpa<=20)) errors.push('معدل باید بین ۰ تا ۲۰ باشد (یا خالی بماند).');
   return errors;
 }
 
@@ -144,7 +132,7 @@ function planSections(track){
 // امضای ورودی‌ها؛ اگه عوض شه برنامهٔ ذخیره‌شده «قدیمی» حساب می‌شه
 function planInputSig(profile){
   const ids = [state.elec, state.islamic, state.general].map(s=>Array.from(s).sort().join(','));
-  const s = 'v3' + JSON.stringify([ids, Array.from(state.current).sort(), sanitizeProfile(profile) || profile, suggestionTrack(), state.termCaps || {}]);
+  const s = 'v3' + JSON.stringify([ids, Array.from(state.current).sort(), sanitizeProfile(profile) || profile, suggestionTrack(), state.termCaps || {}, state.planSwaps || []]);
   let h = 5381;
   for(let i=0;i<s.length;i++){ h = (((h<<5) + h) + s.charCodeAt(i)) | 0; }
   return String(h>>>0);
@@ -158,8 +146,31 @@ function planDateInt(d){ return d.y*10000 + d.m*100 + d.d; }
 // ظرفیت انتخابیِ پیش‌فرض (وقتی کاربر چیزی تعیین نکرده): ترم عادی ۲۰ (یا کمتر اگه سقف قانونی کمتره)، تابستان = سقف قانونی
 function planAutoCap(kind, legalNonLast){ return kind==='regular' ? Math.min(PLAN_RULES.regularBase, legalNonLast) : legalNonLast; }
 
+// جایگزینی‌ها ← pins (این درس باید در این نیمسال بیاید)، bans (این درس در این نیمسال نیاید)، dropped (این درس سهمیه‌ای دیگر لازم نیست)
+function planSwapsToEdits(swaps){
+  const pins = {}, bans = {}, dropped = new Set();
+  (swaps || []).forEach(r=>{
+    delete pins[r.out];
+    (bans[r.out] = bans[r.out] || new Set()).add(r.key);
+    if(bans[r.inn]) bans[r.inn].delete(r.key);
+    dropped.delete(r.inn);
+    pins[r.inn] = r.key;
+    if(r.drop) dropped.add(r.out);
+  });
+  return {pins, bans, dropped};
+}
+// ترتیب زمانیِ یک کلید نیمسال (تابستان بین دو نیمسال عادی)
+function planKeyOrder(profile, key){
+  if(key.charAt(0)==='r') return parseInt(key.slice(1), 10);
+  const y = parseInt(key.slice(1), 10);
+  for(let k=1; k<=60; k++){
+    const c = planTermCalendar(profile.entryYear, profile.entryTerm, k);
+    if(c.season==='bahman' && c.year + 1 === y) return k + 0.5;
+  }
+  return 0;
+}
+
 function planBuildContext(profile, opts){
-  const status = planGpaStatus(profile.lastGpa);
   const projectCurrent = profile.projectCurrent !== false;
   const track = suggestionTrack();
   const before0 = new Set();
@@ -169,16 +180,18 @@ function planBuildContext(profile, opts){
   });
   let currentCredit = 0;
   planAllCourses().forEach(c=>{ if(isCurrentOnly(c.id)) currentCredit += creditUnitsOf(c); });
+  const edits = planSwapsToEdits(opts.swaps !== undefined ? opts.swaps : state.planSwaps);
   const sections = planSections(track);
   const order = {};
   let k = 0;
   sections.forEach(sec=>sec.groups.forEach(g=>g.ids.forEach(id=>{ if(order[id]===undefined) order[id] = k++; })));
   return {
-    profile, track, status, projectCurrent, sections, order, before0,
+    profile, track, projectCurrent, sections, order, before0,
     includeSummer: !!profile.includeSummer,
     internshipPinned0: !!profile.includeSummer && !!profile.summerInternship,
     termCaps: (opts.termCaps !== undefined ? opts.termCaps : state.termCaps) || {},
     letterKeys: new Set(),
+    pins: edits.pins, bans: edits.bans, dropped: edits.dropped,
     unitsBefore0: combinedPassedUnits() + (projectCurrent ? currentCredit : 0)
   };
 }
@@ -223,7 +236,9 @@ function planQuotaGroups(ctx){
     g.ids.forEach(id=>{
       const c = byId(sec.courses, id);
       if(!c || isPassedAny(id) || state.current.has(id)) return;
-      cands.push({course:c, forced: forcedIds.indexOf(id) >= 0});
+      const pinned = ctx.pins[id] !== undefined;                       // جایگزینیِ کاربر: حتماً در برنامه می‌آید
+      if(ctx.dropped.has(id) && !pinned && forcedIds.indexOf(id) < 0) return;   // کاربر کنارش گذاشته (به‌جز درس الزامیِ گروه، مثل دفاع مقدس)
+      cands.push({course:c, forced: forcedIds.indexOf(id) >= 0 || pinned});
     });
     out.push({key:sec.key + ':' + g.id, sec:sec.key, group:g, unitsMode, w, req, cands});
   }));
@@ -344,15 +359,24 @@ function planSchedule(ctx, nodeList, opts){
   let lastRegular = profile.currentTerm;
   let lastCal = planTermCalendar(profile.entryYear, profile.entryTerm, lastRegular);
   let summerPending = ctx.includeSummer && lastCal.season==='bahman';
-  let regularOrdinal = 0, emptyStreak = 0, guard = 0, slotIndex = 0;
+  let emptyStreak = 0, guard = 0, slotIndex = 0;
+  const pinFailed = new Set();
 
   while(remaining.size > 0 && guard++ < 80){
     let slot;
     if(summerPending){ slot = {kind:'summer', cal:planSummerCalendar(lastCal)}; summerPending = false; }
-    else { const k = lastRegular + 1; slot = {kind:'regular', termNo:k, cal:planTermCalendar(profile.entryYear, profile.entryTerm, k)}; regularOrdinal++; }
+    else { const k = lastRegular + 1; slot = {kind:'regular', termNo:k, cal:planTermCalendar(profile.entryYear, profile.entryTerm, k)}; }
     const key = planTermKey(slot);
+    // جایگزینی‌ای که نیمسالش گذشته و جا نشد، رها می‌شود
+    const slotOrder = slot.kind==='regular' ? slot.termNo : lastRegular + 0.5;
+    remaining.forEach(n=>{
+      const pk = ctx.pins[n.id];
+      if(pk !== undefined && !pinFailed.has(n.id) && planKeyOrder(profile, pk) < slotOrder) pinFailed.add(n.id);
+    });
+    const pinned = n => ctx.pins[n.id] !== undefined && !pinFailed.has(n.id);
+    const bannedHere = n => !!(ctx.bans[n.id] && ctx.bans[n.id].has(key));
+    const heldElsewhere = n => pinned(n) && ctx.pins[n.id] !== key;
     const user = Object.prototype.hasOwnProperty.call(ctx.termCaps, key) ? ctx.termCaps[key] : undefined;
-    const statusHere = slot.kind==='regular' ? ((profile.assumeStatusPersists || regularOrdinal===1) ? ctx.status.code : 'normal') : 'normal';
     // پروژه و کارآموزی: از نیمسال finalFrom به بعد؛ و اگر همین ترم، آخرِ واقعیِ دانشجو باشد از نیمسال lastTermMin
     // (تابستان: بر اساس نیمسال عادیِ قبل از آن)
     const baseNo = slot.kind==='regular' ? slot.termNo : lastRegular;
@@ -368,15 +392,15 @@ function planSchedule(ctx, nodeList, opts){
     const summerOk = (n, fin) => n.sec!=='elec' || (n.id==='e52' && internshipPinned && okFrom(fin));
     // پروژه و کارآموزی: فقط از نیمسال finalFrom به بعد، یا در ترم آخرِ واقعی از نیمسال lastTermMin
     const lastOnlyOk = (n, fin) => !n.lastOnly || (slot.kind==='regular' ? (okFrom(fin) && !(internshipPinned && n.id==='e52')) : (n.id==='e52' && internshipPinned && okFrom(fin)));
-    const eligibleX = (n, fin) => lastOnlyOk(n, fin) && n.pre.every(p=>before.has(p)) && (!n.minTotal || n.minTotal <= unitsBefore) &&
+    const eligibleX = (n, fin) => !bannedHere(n) && !heldElsewhere(n) && lastOnlyOk(n, fin) && n.pre.every(p=>before.has(p)) && (!n.minTotal || n.minTotal <= unitsBefore) &&
       (slot.kind==='summer' ? summerOk(n, fin) : true);
     const eligible = n => eligibleX(n, false);
     const eligibleFinal = n => eligibleX(n, true);
 
     // سقف‌های این نیمسال: فقط «ترم آخرِ واقعی» ۲۴ واحد و بدون مازاد دارد (تابستانِ آخر: ۱۰ واحد با مجوز)
     const capBase = isFinalAttempt => slot.kind==='summer'
-      ? planCapFor('summer', isFinalAttempt, 'normal', false)
-      : planCapFor('regular', isFinalAttempt, statusHere, false);
+      ? planCapFor('summer', isFinalAttempt)
+      : planCapFor('regular', isFinalAttempt);
     // ترم کارآموزی: فقط ۱۴ واحد دیگر علاوه بر کارآموزی (تابستان: مجموع حداکثر ۶)
     const intLimit = (cap, intUnits) => slot.kind==='summer' ? Math.min(cap, PLAN_RULES.summerInternship) : Math.min(cap, intUnits + PLAN_RULES.internshipExtra);
 
@@ -449,6 +473,8 @@ function planSchedule(ctx, nodeList, opts){
           m.forEach(x=>{ chosen.push(x); chosenIds.add(x.id); });
           usedNow += addUnits; maarifNow += addMaarif; totalNow += addTotal;
         };
+        // جایگزینی‌های کاربر برای همین نیمسال اول از همه
+        Array.from(remaining.values()).filter(n=>pinned(n) && ctx.pins[n.id]===key).sort(prio).forEach(tryAdd);
         Array.from(remaining.values()).filter(n=>n.isMaarif)
           .sort((a,b)=> (a.exempt===b.exempt ? 0 : (a.exempt ? -1 : 1)) || prio(a,b))
           .forEach(tryAdd);
@@ -464,7 +490,9 @@ function planSchedule(ctx, nodeList, opts){
         let text;
         const miss = n.pre.filter(p=>!before.has(p));
         const nm = ids => ids.slice(0,2).map(p=>'«' + planTitle(p) + '»').join('، ');
-        if(n.lastOnly && !lastOnlyOk(n, false)) text = internshipPinned && n.id==='e52' && slot.kind==='regular'
+        if(bannedHere(n)) text = 'به درخواست تو (جایگزینی) در این نیمسال گذاشته نشد';
+        else if(heldElsewhere(n)) text = 'طبق جایگزینی تو در نیمسال دیگری گذاشته می‌شود';
+        else if(n.lastOnly && !lastOnlyOk(n, false)) text = internshipPinned && n.id==='e52' && slot.kind==='regular'
           ? 'کارآموزی طبق انتخاب تو در تابستان گذاشته می‌شود'
           : 'پروژه و کارآموزی فقط از نیمسال ' + PLAN_RULES.finalFrom + ' به بعد قابل اخذ است (یا در ترم ' + PLAN_RULES.lastTermMin + ' اگر همان ترم آخرت باشد)';
         else if(miss.length){
@@ -531,7 +559,7 @@ function planSchedule(ctx, nodeList, opts){
   while(terms.length && terms[terms.length-1].courseIds.length===0) terms.pop();
   const blockedWhy = {};
   if(wantWhy) remaining.forEach(n=>{ if(n.lastWhy) blockedWhy[n.id] = n.lastWhy; });
-  return {terms, blocked:Array.from(remaining.keys()), delays, blockedWhy, nodes};
+  return {terms, blocked:Array.from(remaining.keys()), delays, blockedWhy, nodes, pinFailed:Array.from(pinFailed)};
 }
 
 // امتیاز چینش (کمتر = بهتر): ۱) درس بی‌راه‌مانده ۲) زودترین تاریخ فارغ‌التحصیلی ۳) واحد کمتر ۴) متعادل‌تر
@@ -661,7 +689,7 @@ function planGenerate(profile, opts){
   const terms = res.terms, blocked = res.blocked;
   const nodes = res.nodes;
   const R = new Map(nodes.map(n=>[n.id, n]));
-  const status = ctx.status, projectCurrent = ctx.projectCurrent, internshipPinned0 = ctx.internshipPinned0;
+  const projectCurrent = ctx.projectCurrent, internshipPinned0 = ctx.internshipPinned0;
 
   const plannedCredit = nodes.reduce((s,n)=>s+n.credit, 0);
   let cum = 0;
@@ -690,13 +718,8 @@ function planGenerate(profile, opts){
   }
 
   /* ---- هشدارها ---- */
-  if(!status.known) warnings.push({level:'info', text:'معدل نیمسال گذشته وارد نشده؛ وضعیت «عادی» (سقف ۲۰ واحد) فرض شد.'});
-  else if(status.code==='probation') warnings.push({level:'warn', text:'وضعیت تو «مشروط» است؛ سقف ۱۴ واحد رعایت شده و هیچ استثنایی (معدل الف، ترم آخر، مازاد وصایا/انس با قرآن) از آن عبور نمی‌کند.'});
-  if(status.known && status.code!=='normal' && !profile.assumeStatusPersists){
-    warnings.push({level:'info', text:'وضعیت «' + status.label + '» فقط برای اولین نیمسال برنامه اعمال شده؛ معدل نیمسال‌های بعد هنوز معلوم نیست و سقف عادی فرض شده.'});
-  }
   terms.forEach(t=>{
-    if(t.overLegal) warnings.push({level:'warn', text:'ظرفیت انتخابی ' + t.selectedCap + ' واحد برای «' + planSlotLabel(t) + '» از حداکثر مجاز آن (' + t.altCap + ' واحد) بیشتر است؛ ' + t.altCap + ' اعمال شد' + (t.altCap===PLAN_RULES.probationCap ? ' (وضعیت مشروطی).' : '.')});
+    if(t.overLegal) warnings.push({level:'warn', text:'ظرفیت انتخابی ' + t.selectedCap + ' واحد برای «' + planSlotLabel(t) + '» از حداکثر مجاز آن (' + t.altCap + ' واحد) بیشتر است؛ ' + t.altCap + ' اعمال شد.'});
   });
   const alefTerms = terms.filter(t=>t.needsAlef);
   if(alefTerms.length) warnings.push({level:'warn', text:'در ' + alefTerms.map(planSlotLabel).join('، ') + ' ظرفیت بیش از ۲۰ واحد انتخاب شده؛ این فقط وقتی ممکن است که معدل نیمسال قبل از آن ≥ ۱۷ (معدل الف) شود. در برنامه همین فرض شده است.'});
@@ -732,6 +755,16 @@ function planGenerate(profile, opts){
     warnings.push({level:'info', text:'با توجه به تاریخ امروز و سال/نیمسال ورود، نیمسال جاری باید «' + expected + '» باشد ولی «' + profile.currentTerm + '» وارد کرده‌ای. اگر مرخصی یا وقفه داشته‌ای طبیعی است؛ تاریخ‌ها بر اساس عددی که وارد کردی حساب شده‌اند.'});
   }
 
+  // جایگزینی‌های کاربر: اعمال شد یا نه
+  const swapsList = opts.swaps !== undefined ? opts.swaps : (state.planSwaps || []);
+  const swapStatus = swapsList.map(r=>{
+    const tm = terms.find(t=>t.key===r.key);
+    return {key:r.key, out:r.out, inn:r.inn, drop:!!r.drop, ok: !!tm && tm.courseIds.indexOf(r.inn) >= 0};
+  });
+  swapStatus.filter(x=>!x.ok).forEach(x=>{
+    warnings.push({level:'warn', text:'جایگزینی «' + planTitle(x.inn) + '» به‌جای «' + planTitle(x.out) + '» در «' + planKeyLabel(x.key) + '» اعمال نشد (دیگر قابل‌اخذ نیست یا جا نشد)؛ برنامه بدون آن چیده شد.'});
+  });
+
   // «معرفی به استاد»: فقط به‌عنوان گزینهٔ جدا، هرگز وارد برنامه نمی‌شود.
   // شرط‌ها: حداکثر ۸ واحد باقی‌مانده، همه نظری (بدون واحد عملی)، نه ورزش، نه کارآموزی.
   let instructorOption = null;
@@ -752,11 +785,11 @@ function planGenerate(profile, opts){
 
   const sec0 = ctx.sections[0];
   return {
-    version:1, track:ctx.track, status:{code:status.code, label:status.label, known:status.known},
+    version:1, track:ctx.track,
     current:{termNo:profile.currentTerm, cal:planTermCalendar(profile.entryYear, profile.entryTerm, profile.currentTerm),
              courseIds: planAllCourses().filter(c=>isCurrentOnly(c.id)).map(c=>c.id), units: termLoadUnits()},
     terms, meta, blocked, graduation, warnings, instructorOption,
-    delays: res.delays, blockedWhy: res.blockedWhy, letterHint, letterKeys,
+    delays: res.delays, blockedWhy: res.blockedWhy, letterHint, letterKeys, swapStatus,
     totals:{
       passedUnits: combinedPassedUnits(), currentUnits: currentUnits(), plannedUnits: plannedCredit,
       requiredTotal: groupsRequiredTotal(sec0.groups, sec0.courses) +
@@ -765,6 +798,109 @@ function planGenerate(profile, opts){
     }
   };
 }
+
+function planTermShort(t){ return t.kind==='summer' ? 'تابستان ' + t.cal.year : 'نیمسال ' + t.termNo; }
+// کلید ظرفیت/جایگزینی یک نیمسال (برنامه‌های قدیمی‌تر کلید ندارند)
+function planTermKeyOf(tm){ return tm.key || (tm.kind==='summer' ? 's' + tm.cal.year : 'r' + tm.termNo); }
+function planKeyLabel(key){ return key.charAt(0)==='r' ? 'نیمسال ' + key.slice(1) : 'تابستان ' + key.slice(1); }
+
+/* ---- جایگزینی درس‌ها ---- */
+// درس‌هایی که می‌شود به‌جای outId در نیمسال tIdx برداشت (پیش‌نیاز، هم‌نیاز، ظرفیت، معارف، قوانین پروژه/کارآموزی رعایت می‌شود)
+function planAlternatives(planData, tIdx, outId){
+  const profile = state.profile;
+  const terms = planData && planData.terms;
+  if(!profile || !terms || !terms[tIdx]) return [];
+  const t = terms[tIdx];
+  const proj = profile.projectCurrent !== false;
+  const sections = planSections(planData.track);
+  const placedAt = {};
+  terms.forEach((x,i)=>x.courseIds.forEach(id=>{ placedAt[id] = i; }));
+  const before = new Set();
+  let credit = combinedPassedUnits();
+  planAllCourses().forEach(c=>{
+    if(isPassedAny(c.id)) before.add(c.id);
+    else if(proj && isCurrentOnly(c.id)){ before.add(c.id); credit += creditUnitsOf(c); }
+  });
+  for(let i=0; i<tIdx; i++) terms[i].courseIds.forEach(id=>{ before.add(id); credit += creditUnitsOf(anyCourse(id)); });
+  const S = t.courseIds.filter(id=>id!==outId);
+  const kindOf = id => (planData.meta[id] || {}).kind;
+
+  // ظرفیت مؤثر این نیمسال (بعد از برداشتن درس فعلی)
+  const baseCap = t.kind==='summer' ? (t.isLast ? PLAN_RULES.summerLastCap : PLAN_RULES.summerBase) : (t.isLast ? PLAN_RULES.lastTermCap : PLAN_RULES.regularBase);
+  const altCap = (t.kind==='regular' && !t.isLast) ? PLAN_RULES.alefCap : baseCap;
+  const selCap = t.userCap !== null && t.userCap !== undefined ? t.userCap : ((t.kind==='summer' || t.isLast) ? baseCap : Math.min(PLAN_RULES.regularBase, baseCap));
+  const capEff = Math.min(selCap, altCap);
+  const exemptOk = !t.isLast;     // وصایا/انس مازاد بر سقف (مگر ترم آخر و ترم کارآموزی)
+
+  // گروهِ درس فعلی
+  let outGroup = null;
+  sections.forEach(sec=>sec.groups.forEach(g=>{ if(!outGroup && g.ids.indexOf(outId) >= 0) outGroup = sec.key + ':' + g.id; }));
+  const pool = new Map();
+  terms.forEach((x,i)=>{ if(i>tIdx) x.courseIds.forEach(id=>pool.set(id, {later:i})); });
+  if(kindOf(outId)==='quota' && outGroup){
+    sections.forEach(sec=>sec.groups.forEach(g=>{
+      if(sec.key + ':' + g.id !== outGroup) return;
+      g.ids.forEach(id=>{
+        if(id===outId || pool.has(id) || placedAt[id]!==undefined || isPassedAny(id) || state.current.has(id)) return;
+        if(byId(sec.courses, id)) pool.set(id, {later:-1});
+      });
+    }));
+  }
+  const out = [];
+  pool.forEach((info, id)=>{
+    const c = anyCourse(id);
+    if(!c || id===outId) return;
+    if(c.exclusiveWith){
+      const o = c.exclusiveWith;
+      if(isPassedAny(o) || state.current.has(o) || (placedAt[o]!==undefined && o!==outId)) return;
+    }
+    if(!(c.pre || []).every(p=>before.has(p))) return;
+    if(!(c.co || []).every(p=>before.has(p) || S.indexOf(p) >= 0)) return;
+    if(c.minTotalUnits && c.minTotalUnits > credit) return;
+    if(id==='e37' || id==='e52'){
+      if(t.kind!=='regular' || !(t.termNo >= PLAN_RULES.finalFrom || (t.isLast && t.termNo >= PLAN_RULES.lastTermMin))) return;
+      if(id==='e52' && profile.includeSummer && profile.summerInternship) return;
+    }
+    if(t.kind==='summer' && ELEC_COURSES.some(x=>x.id===id)) return;
+    const withB = S.concat([id]);
+    const maarif = withB.reduce((sum,x)=>sum + (ISLAMIC_COURSES.some(y=>y.id===x) ? unitsOf(anyCourse(x)) : 0), 0);
+    if(maarif > t.maarifLimit) return;
+    const intl = withB.indexOf('e52') >= 0;
+    const allUnits = withB.reduce((sum,x)=>sum + unitsOf(anyCourse(x)), 0);
+    if(intl){
+      const lim = t.kind==='summer' ? Math.min(capEff, PLAN_RULES.summerInternship) : Math.min(capEff, unitsOf(anyCourse('e52')) + PLAN_RULES.internshipExtra);
+      if(allUnits > lim) return;
+    }else{
+      const used = withB.reduce((sum,x)=>sum + ((exemptOk && PLAN_EXEMPT_IDS.indexOf(x) >= 0) ? 0 : unitsOf(anyCourse(x))), 0);
+      if(used > capEff) return;
+    }
+    let sameGroup = false;
+    sections.forEach(sec=>sec.groups.forEach(g=>{ if(sec.key + ':' + g.id === outGroup && g.ids.indexOf(id) >= 0) sameGroup = true; }));
+    out.push({id, title:c.title, units:unitsOf(c), kind: kindOf(id) || 'quota', laterIdx: info.later,
+      where: info.later >= 0 ? planSlotLabel(terms[info.later]) : null, sameGroup});
+  });
+  out.sort((a,b)=> (a.sameGroup===b.sameGroup ? 0 : (a.sameGroup ? -1 : 1)) || (a.laterIdx-b.laterIdx) || a.title.localeCompare(b.title));
+  return out;
+}
+
+// اعمال جایگزینی: inn در نیمسال key می‌آید، out از آن نیمسال کنار می‌رود و (اگر لازم باشد) بعداً دوباره گذاشته می‌شود
+function planApplySwap(key, outId, innId){
+  if(!state.plan) return false;
+  const d = state.plan.data;
+  const inPlan = d.terms.some(t=>t.courseIds.indexOf(innId) >= 0);
+  let sameGroup = false;
+  planSections(d.track).forEach(sec=>sec.groups.forEach(g=>{ if(g.ids.indexOf(outId) >= 0 && g.ids.indexOf(innId) >= 0) sameGroup = true; }));
+  const forced = Object.keys(PLAN_FORCED_QUOTA).some(g=>PLAN_FORCED_QUOTA[g].indexOf(outId) >= 0);   // درس الزامیِ گروه هیچ‌وقت کنار گذاشته نمی‌شود
+  const rec = {key, out:outId, inn:innId, drop: !!((d.meta[outId] || {}).kind==='quota' && !inPlan && sameGroup && !forced)};
+  state.planSwaps.push(rec);
+  planRefresh();
+  const st = state.plan.data.swapStatus;
+  const last = st[st.length-1];
+  if(!last || !last.ok){ state.planSwaps.pop(); planRefresh(); return false; }
+  return true;
+}
+function planUndoSwap(index){ if(index >= 0 && index < state.planSwaps.length){ state.planSwaps.splice(index, 1); planRefresh(); } }
+function planClearSwaps(){ state.planSwaps = []; planRefresh(); }
 
 // تولید و ذخیرهٔ برنامه (ساختار terms[].courseIds برای ویرایش در مراحل بعد آماده است)
 function planRefresh(){

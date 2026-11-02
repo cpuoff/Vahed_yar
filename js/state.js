@@ -7,11 +7,10 @@ function sanitizeProfile(p){
   if(!p || typeof p !== 'object' || Array.isArray(p)) return null;
   const y = parseInt(p.entryYear, 10), cur = parseInt(p.currentTerm, 10);
   if(!(y >= 1300 && y <= 1500) || !(cur >= 1 && cur <= 40)) return null;
-  const gpa = (typeof p.lastGpa === 'number' && p.lastGpa >= 0 && p.lastGpa <= 20) ? p.lastGpa : null;
   return {
-    entryYear: y, entryTerm: p.entryTerm === 'bahman' ? 'bahman' : 'mehr', currentTerm: cur, lastGpa: gpa,
+    entryYear: y, entryTerm: p.entryTerm === 'bahman' ? 'bahman' : 'mehr', currentTerm: cur,
     includeSummer: !!p.includeSummer, summerInternship: !!p.summerInternship,
-    assumeStatusPersists: !!p.assumeStatusPersists, projectCurrent: p.projectCurrent !== false, maarifLetter: !!p.maarifLetter
+    projectCurrent: p.projectCurrent !== false, maarifLetter: !!p.maarifLetter
   };
 }
 // ظرفیت انتخابیِ هر نیمسال: { r8: 18, s1406: 6 } (r = نیمسال عادی، s = تابستان). مقدار نامعتبر دور ریخته می‌شود.
@@ -24,6 +23,19 @@ function sanitizeTermCaps(o){
   });
   return out;
 }
+// جایگزینی دروس در برنامه: [{key:'r9', out:'e45', inn:'e46', drop:false}] (key = نیمسال)
+function sanitizeSwaps(a){
+  const out = [];
+  if(!Array.isArray(a)) return out;
+  a.slice(0, 80).forEach(x=>{
+    if(!x || typeof x !== 'object') return;
+    const ok = s => typeof s === 'string' && /^[\w-]{1,30}$/.test(s);
+    if(typeof x.key === 'string' && /^(r\d{1,2}|s\d{4})$/.test(x.key) && ok(x.out) && ok(x.inn) && x.out !== x.inn){
+      out.push({key:x.key, out:x.out, inn:x.inn, drop:!!x.drop});
+    }
+  });
+  return out;
+}
 // برنامهٔ ذخیره‌شده (ساختار نامعتبر → null)
 function sanitizePlan(p){
   if(!p || typeof p !== 'object' || Array.isArray(p) || p.version !== 1) return null;
@@ -33,7 +45,7 @@ function sanitizePlan(p){
 function loadState(){
   try{
     const raw = localStorage.getItem(STORAGE_KEY);
-    if(!raw) return {elec:[], islamic:[], general:[], current:[], grades:{}, trackPref:'elec', elecSub:'elec', dismissed:{}, profile:null, plan:null, termCaps:{}};
+    if(!raw) return {elec:[], islamic:[], general:[], current:[], grades:{}, trackPref:'elec', elecSub:'elec', dismissed:{}, profile:null, plan:null, termCaps:{}, planSwaps:[]};
     const parsed = JSON.parse(raw);
     return {
       elec: parsed.elec || [],
@@ -46,9 +58,10 @@ function loadState(){
       dismissed: (parsed.dismissed && typeof parsed.dismissed === 'object' && !Array.isArray(parsed.dismissed)) ? parsed.dismissed : {},
       profile: sanitizeProfile(parsed.profile),
       plan: sanitizePlan(parsed.plan),
-      termCaps: sanitizeTermCaps(parsed.termCaps)
+      termCaps: sanitizeTermCaps(parsed.termCaps),
+      planSwaps: sanitizeSwaps(parsed.planSwaps)
     };
-  }catch(e){ return {elec:[], islamic:[], general:[], current:[], grades:{}, trackPref:'elec', elecSub:'elec', dismissed:{}, profile:null, plan:null, termCaps:{}}; }
+  }catch(e){ return {elec:[], islamic:[], general:[], current:[], grades:{}, trackPref:'elec', elecSub:'elec', dismissed:{}, profile:null, plan:null, termCaps:{}, planSwaps:[]}; }
 }
 function saveState(){
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -62,7 +75,8 @@ function saveState(){
     dismissed: state.dismissed,
     profile: state.profile,
     plan: state.plan,
-    termCaps: state.termCaps
+    termCaps: state.termCaps,
+    planSwaps: state.planSwaps
   }));
 }
 const _s = loadState();
@@ -77,7 +91,8 @@ const state = {
   dismissed: _s.dismissed || {},
   profile: _s.profile || null,
   plan: _s.plan || null,
-  termCaps: _s.termCaps || {}
+  termCaps: _s.termCaps || {},
+  planSwaps: _s.planSwaps || []
 };
 const COURSES_BY_KEY = { elec: ELEC_COURSES, islamic: ISLAMIC_COURSES, general: GENERAL_COURSES };
 
