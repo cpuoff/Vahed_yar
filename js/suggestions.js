@@ -12,6 +12,10 @@
 
 // سقف مجاز واحد در یک ترم عادی (فعلاً ثابت؛ در مرحلهٔ مشخصات تحصیلی به تنظیمات کاربر وصل می‌شود)
 const TERM_MAX_UNITS = 20;
+// سقف واحد معارف در هر ترم عادی (با نامهٔ مدیرگروه معارف ۴ واحد؛ این‌جا همان سقف عادی)
+const TERM_MAX_MAARIF = 2;
+// سهم دروس عمومی + معارف از ظرفیت ترم در نوبت اول انتخاب (که دروس برق کل ظرفیت را نگیرند)؛ اگر برق جا پر نکرد، بعداً مازاد هم اضافه می‌شود
+const TERM_NONELEC_SHARE = 0.4;
 
 const EMPTY_SET = new Set();
 
@@ -166,26 +170,48 @@ function computeTermSuggestions(){
     return ok ? members : null;
   }
 
-  cands.forEach(c=>{
-    if(selected.has(c.course.id)) return;
-    if(need[c.groupId] <= 0) return;
-    const members = bundleOf(c);
-    if(!members) return;
-    const fresh = members.filter(m=>!selected.has(m.course.id));
-    const units = fresh.reduce((s,m)=>s+unitsOf(m.course), 0);
-    if(units > remaining) return;
-    remaining -= units;
-    fresh.forEach(m=>{
-      selected.add(m.course.id);
-      picked.push(m);
-      need[m.groupId] -= (m.group.kind==='countMin' ? 1 : creditUnitsOf(m.course));
+  // معارفِ در حال گذراندن از سقف معارف همین ترم کم می‌شود
+  let maarifLeft = TERM_MAX_MAARIF;
+  ISLAMIC_COURSES.forEach(c=>{ if(isCurrentOnly(c.id)) maarifLeft -= unitsOf(c); });
+  maarifLeft = Math.max(0, maarifLeft);
+  const maarifUnitsOf = members => members.reduce((s,m)=>s + (m.sec==='islamic' ? unitsOf(m.course) : 0), 0);
+
+  // یک نوبت انتخاب روی دسته‌ای از بخش‌ها؛ budget = حداکثر واحدی که این نوبت می‌تواند بردارد
+  function pickPass(secKeys, budget){
+    let spent = 0;
+    cands.forEach(c=>{
+      if(secKeys.indexOf(c.sec) < 0) return;
+      if(selected.has(c.course.id)) return;
+      if(need[c.groupId] <= 0) return;
+      const members = bundleOf(c);
+      if(!members) return;
+      const fresh = members.filter(m=>!selected.has(m.course.id));
+      const units = fresh.reduce((s,m)=>s+unitsOf(m.course), 0);
+      const mUnits = maarifUnitsOf(fresh);
+      if(units > remaining || spent + units > budget) return;
+      if(mUnits > maarifLeft) return;
+      remaining -= units; spent += units; maarifLeft -= mUnits;
+      fresh.forEach(m=>{
+        selected.add(m.course.id);
+        picked.push(m);
+        need[m.groupId] -= (m.group.kind==='countMin' ? 1 : creditUnitsOf(m.course));
+      });
     });
-  });
+  }
+  // ۱) معارف (با سقف ۲ واحد)  ۲) عمومی  — هر دو با سهم محدود   ۳) دروس برق   ۴) اگر ظرفیت مانده، مازاد معارف/عمومی
+  const nonElecBudget = Math.floor(remaining * TERM_NONELEC_SHARE);
+  {
+    const before = remaining;
+    pickPass(['islamic'], nonElecBudget);
+    pickPass(['general'], nonElecBudget - (before - remaining));
+  }
+  pickPass(['elec'], Infinity);
+  pickPass(['islamic', 'general'], Infinity);
 
   const bySection = {elec:[], islamic:[], general:[]};
   picked.forEach(m=>bySection[m.sec].push(m));
   const suggestedUnits = picked.reduce((s,m)=>s+unitsOf(m.course), 0);
-  return {track, cap:TERM_MAX_UNITS, load, suggestedUnits, remaining, bySection, warnings:currentPrereqWarnings()};
+  return {track, cap:TERM_MAX_UNITS, load, suggestedUnits, remaining, maarifLeft, bySection, warnings:currentPrereqWarnings()};
 }
 
 /* ------------------------------ رندر ------------------------------ */
@@ -242,9 +268,11 @@ function renderSuggestionSection(containerId, items, title, capNote, res){
   if(items.length===0){
     const empty = document.createElement('div');
     empty.className = 'suggest-empty';
-    empty.innerHTML = res.remaining <= 0
-      ? '<div><b>ظرفیت واحد این ترم پر است</b> — پیشنهاد جدیدی اضافه نمی‌شه.</div>'
-      : '<div><b>پیشنهادی برای این بخش نیست</b> — یا دروس کامل شده‌اند، یا پیش‌نیاز درسی آماده نیست، یا ظرفیت باقی‌ماندهٔ ترم کافی نیست.</div>';
+    empty.innerHTML = (containerId==='suggest-islamic' && res.maarifLeft <= 0)
+      ? '<div><b>سقف معارف این ترم پر است</b> — در هر ترم عادی حداکثر ' + TERM_MAX_MAARIF + ' واحد معارف (با احتساب درس‌های در حال گذراندن) پیشنهاد می‌شه.</div>'
+      : (res.remaining <= 0
+        ? '<div><b>ظرفیت واحد این ترم پر است</b> — پیشنهاد جدیدی اضافه نمی‌شه.</div>'
+        : '<div><b>پیشنهادی برای این بخش نیست</b> — یا دروس کامل شده‌اند، یا پیش‌نیاز درسی آماده نیست، یا ظرفیت باقی‌ماندهٔ ترم کافی نیست.</div>');
     list.appendChild(empty);
   }else{
     items.forEach(s=>{

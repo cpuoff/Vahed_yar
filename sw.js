@@ -1,4 +1,4 @@
-const CACHE_NAME = 'daraskhtvareh-v15';
+const CACHE_NAME = 'daraskhtvareh-v16';
 const CORE_ASSETS = [
   './',
   './index.html',

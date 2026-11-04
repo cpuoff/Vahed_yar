@@ -314,7 +314,9 @@ function renderPlanResult(plan, profile){
   // نیمسال جاری
   const curBox = planBox('⏳', 'نیمسال جاری (' + d.current.termNo + ')', escapeHtml(d.current.cal.label) + ' · ' + d.current.units + ' واحد در حال گذراندن');
   const curList = planEl('div', 'suggest-list');
-  if(d.current.courseIds.length===0) curList.appendChild(planEl('div', 'suggest-empty', '<div>درسی با وضعیت «در حال گذراندن» علامت نخورده است.</div>'));
+  if(d.current.courseIds.length===0) curList.appendChild(planEl('div', 'suggest-empty', d.current.inProgress === false
+    ? '<div>درسی با وضعیت «در حال گذراندن» علامت نخورده؛ این نیمسال هنوز انتخاب واحد نشده و برنامه از <b>همین نیمسال</b> شروع می‌شود.</div>'
+    : '<div>درسی با وضعیت «در حال گذراندن» علامت نخورده است.</div>'));
   d.current.courseIds.forEach(id=>{
     const c = anyCourse(id); if(!c) return;
     const it = planEl('div', 'suggest-item');

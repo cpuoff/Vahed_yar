@@ -181,12 +181,15 @@ function planBuildContext(profile, opts){
   let currentCredit = 0;
   planAllCourses().forEach(c=>{ if(isCurrentOnly(c.id)) currentCredit += creditUnitsOf(c); });
   const edits = planSwapsToEdits(opts.swaps !== undefined ? opts.swaps : state.planSwaps);
+  // اگر هیچ درسی «در حال گذراندن» علامت نخورده، یعنی نیمسال جاری هنوز انتخاب واحد نشده و برنامه از همین نیمسال شروع می‌شود
+  const currentInProgress = planAllCourses().some(c=>isCurrentOnly(c.id));
+  const firstTerm = currentInProgress ? profile.currentTerm + 1 : profile.currentTerm;
   const sections = planSections(track);
   const order = {};
   let k = 0;
   sections.forEach(sec=>sec.groups.forEach(g=>g.ids.forEach(id=>{ if(order[id]===undefined) order[id] = k++; })));
   return {
-    profile, track, projectCurrent, sections, order, before0,
+    profile, track, projectCurrent, sections, order, before0, currentInProgress, firstTerm,
     includeSummer: !!profile.includeSummer,
     internshipPinned0: !!profile.includeSummer && !!profile.summerInternship,
     termCaps: (opts.termCaps !== undefined ? opts.termCaps : state.termCaps) || {},
@@ -196,9 +199,23 @@ function planBuildContext(profile, opts){
   };
 }
 
+// دستهٔ درس برای پخش متوازن بین نیمسال‌ها (پایه، اصلی، تخصصی الزامی، تخصصی انتخابی، مهارتی، اختیاری، معارف، عمومی)
+function planCategoryOf(sec, group){
+  if(sec==='islamic') return 'islamic';
+  if(sec==='general') return 'general';
+  const g = group.id;
+  if(g==='basic') return 'basic';
+  if(g==='core') return 'core';
+  if(g==='reqspec' || g==='reqspecP' || g==='sharedSpec') return 'spec';
+  if(/Theory$|Lab$/.test(g)) return 'specElective';
+  if(g==='skills') return 'skills';
+  if(g==='electives') return 'electives';
+  return sec + ':' + g;
+}
+
 function planMakeNode(ctx, course, sec, group, kind, tier){
   return {
-    id:course.id, course, sec, group, groupId: sec + ':' + group.id, kind, tier,
+    id:course.id, course, sec, group, groupId: sec + ':' + group.id, kind, tier, cat: planCategoryOf(sec, group),
     units: unitsOf(course), credit: creditUnitsOf(course),
     pre: course.pre || [], co: course.co || [], minTotal: course.minTotalUnits || 0,
     isMaarif: sec==='islamic', exempt: PLAN_EXEMPT_IDS.indexOf(course.id) >= 0, lastOnly: PLAN_LAST_ONLY_IDS.indexOf(course.id) >= 0,
@@ -350,15 +367,17 @@ function planSchedule(ctx, nodeList, opts){
   opts = opts || {};
   const prio = PLAN_PRIOS[opts.variant || 0];
   const wantWhy = !!opts.reasons;
+  const bal = opts.balance || null;     // {kinds:[نوع نیمسال‌های برنامهٔ پایه], margin}
   const profile = ctx.profile;
   const nodes = planPrepare(nodeList);
   const remaining = new Map(nodes.map(n=>[n.id, n]));
   const before = new Set(ctx.before0);
   let unitsBefore = ctx.unitsBefore0;
   const terms = [], delays = {};
-  let lastRegular = profile.currentTerm;
-  let lastCal = planTermCalendar(profile.entryYear, profile.entryTerm, lastRegular);
-  let summerPending = ctx.includeSummer && lastCal.season==='bahman';
+  let lastRegular = ctx.firstTerm - 1;
+  let lastCal = planTermCalendar(profile.entryYear, profile.entryTerm, Math.max(lastRegular, 1));
+  // تابستانِ بعد از نیمسال جاری فقط وقتی معنی دارد که نیمسال جاری واقعاً در حال گذراندن باشد
+  let summerPending = ctx.includeSummer && ctx.currentInProgress && lastCal.season==='bahman';
   let emptyStreak = 0, guard = 0, slotIndex = 0;
   const pinFailed = new Set();
 
@@ -458,27 +477,82 @@ function planSchedule(ctx, nodeList, opts){
           })(n);
           return ok ? members : null;
         };
-        const tryAdd = n => {
-          if(chosenIds.has(n.id)) return;
+        // آیا این درس (با هم‌نیازهایش) هنوز جا دارد؟ (بدون اثر جانبی)
+        const fitOf = n => {
+          if(chosenIds.has(n.id)) return null;
           const m = bundleFor(n);
-          if(!m || m.length===0) return;
+          if(!m || m.length===0) return null;
           const addUnits = m.reduce((s,x)=>s+unitsCap(x), 0);
           const addMaarif = m.reduce((s,x)=>s+(x.isMaarif ? x.units : 0), 0);
           const addTotal = m.reduce((s,x)=>s+x.units, 0);
           const intM = m.find(x=>x.id==='e52') || (chosenIds.has('e52') ? remaining.get('e52') : null);
           // ترم کارآموزی: همهٔ واحدها (حتی وصایا/انس با قرآن) داخل «۱۴ واحد دیگر» (تابستان: مجموع ۶) حساب می‌شوند
-          if(intM){ if(totalNow + addTotal > intLimit(capInfo.eff, intM.units)) return; }
-          else if(usedNow + addUnits > capInfo.eff) return;
-          if(maarifNow + addMaarif > maarifLimit) return;
-          m.forEach(x=>{ chosen.push(x); chosenIds.add(x.id); });
-          usedNow += addUnits; maarifNow += addMaarif; totalNow += addTotal;
+          if(intM){ if(totalNow + addTotal > intLimit(capInfo.eff, intM.units)) return null; }
+          else if(usedNow + addUnits > capInfo.eff) return null;
+          if(maarifNow + addMaarif > maarifLimit) return null;
+          return {m, addUnits, addMaarif, addTotal};
         };
+        const commit = f => {
+          f.m.forEach(x=>{ chosen.push(x); chosenIds.add(x.id); });
+          usedNow += f.addUnits; maarifNow += f.addMaarif; totalNow += f.addTotal;
+        };
+        const tryAdd = n => { const f = fitOf(n); if(f) commit(f); return !!f; };
         // جایگزینی‌های کاربر برای همین نیمسال اول از همه
         Array.from(remaining.values()).filter(n=>pinned(n) && ctx.pins[n.id]===key).sort(prio).forEach(tryAdd);
-        Array.from(remaining.values()).filter(n=>n.isMaarif)
-          .sort((a,b)=> (a.exempt===b.exempt ? 0 : (a.exempt ? -1 : 1)) || prio(a,b))
-          .forEach(tryAdd);
-        Array.from(remaining.values()).filter(n=>!n.isMaarif).sort(prio).forEach(tryAdd);
+        if(!bal){
+          Array.from(remaining.values()).filter(n=>n.isMaarif)
+            .sort((a,b)=> (a.exempt===b.exempt ? 0 : (a.exempt ? -1 : 1)) || prio(a,b))
+            .forEach(tryAdd);
+          Array.from(remaining.values()).filter(n=>!n.isMaarif).sort(prio).forEach(tryAdd);
+        }else{
+          // پخش متوازن: اول درس‌هایی که اگر عقب بیفتند فارغ‌التحصیلی دیر می‌شود (زنجیرهٔ پیش‌نیازی بلند)،
+          // بعد بقیه به‌نسبت سهم هر دسته (پایه/اصلی/تخصصی/انتخابی/اختیاری/معارف/عمومی) از نیمسال‌های باقی‌مانده
+          const kinds = bal.kinds;
+          const Rall = Math.max(1, kinds.length - slotIndex);
+          const Rreg = Math.max(1, kinds.slice(slotIndex).filter(k=>k==='regular').length);
+          const catRem = {}, placed = {};
+          remaining.forEach(n=>{ catRem[n.cat] = (catRem[n.cat] || 0) + n.units; });
+          chosen.forEach(n=>{ placed[n.cat] = (placed[n.cat] || 0) + n.units; });
+          const catR = cat => (cat==='islamic' || cat==='general') ? Rall : Rreg;
+          const critical = n => (bal.protect && n.dependents > 0) || n.height + (bal.margin || 0) >= (n.sec==='elec' ? Rreg : Math.min(Rall, Rreg));
+          // معارف (سقف ۲ واحد در ترم) معمولاً گلوگاه تعداد نیمسال‌هاست؛ مثل برنامهٔ پایه همیشه اول جا می‌گیرد
+          Array.from(remaining.values()).filter(n=>n.isMaarif)
+            .sort((a,b)=> (a.exempt===b.exempt ? 0 : (a.exempt ? -1 : 1)) || prio(a,b))
+            .forEach(n=>{
+              const f = fitOf(n);
+              if(f){ commit(f); f.m.forEach(x=>{ placed[x.cat] = (placed[x.cat] || 0) + x.units; }); }
+            });
+          Array.from(remaining.values()).filter(critical).sort(prio).forEach(n=>{
+            const f = fitOf(n);
+            if(f){ commit(f); f.m.forEach(x=>{ placed[x.cat] = (placed[x.cat] || 0) + x.units; }); }
+          });
+          // سطح‌بندی بار: هدف هر نیمسال = واحدهای باقی‌مانده ÷ نیمسال‌های باقی‌مانده (نه پر کردن سقف)
+          let levelTarget = Infinity;
+          if(bal.level){
+            let remUnits = 0;
+            remaining.forEach(n=>{ remUnits += n.exempt ? 0 : n.units; });
+            levelTarget = Math.max(PLAN_RULES.minRegularUnits, Math.ceil(remUnits / Rreg));
+          }
+          for(let guardB = 0; guardB < 200; guardB++){
+            if(usedNow >= levelTarget) break;
+            const byCat = new Map();
+            remaining.forEach(n=>{ if(chosenIds.has(n.id)) return; if(!byCat.has(n.cat)) byCat.set(n.cat, []); byCat.get(n.cat).push(n); });
+            let best = null;
+            byCat.forEach((arr, cat)=>{
+              arr.sort(prio);
+              for(const n of arr){
+                const f = fitOf(n);
+                if(!f) continue;
+                const ratio = (placed[cat] || 0) / Math.max(0.0001, (catRem[cat] || 0) / catR(cat));
+                if(!best || ratio < best.ratio - 1e-9 || (Math.abs(ratio - best.ratio) <= 1e-9 && prio(n, best.n) < 0)) best = {f, n, ratio};
+                break;
+              }
+            });
+            if(!best) break;
+            commit(best.f);
+            best.f.m.forEach(x=>{ placed[x.cat] = (placed[x.cat] || 0) + x.units; });
+          }
+        }
       }
     }
 
@@ -554,7 +628,8 @@ function planSchedule(ctx, nodeList, opts){
     slotIndex++;
     emptyStreak = chosen.length ? 0 : emptyStreak + 1;
     if(slot.kind==='regular'){ lastRegular = slot.termNo; lastCal = slot.cal; summerPending = ctx.includeSummer && slot.cal.season==='bahman'; }
-    if(emptyStreak >= 4) break;
+    // چند نیمسال خالیِ پشت‌سرهم یعنی چیزی جلو نمی‌رود؛ ولی تا نیمسال ۸ (بازهٔ پروژه و کارآموزی، با تابستانِ بعدش) صبر می‌کنیم
+    if(emptyStreak >= 4 && lastRegular >= PLAN_RULES.finalFrom) break;
   }
   while(terms.length && terms[terms.length-1].courseIds.length===0) terms.pop();
   const blockedWhy = {};
@@ -647,6 +722,60 @@ function planLetterSearch(ctx, list, variant){
   return {keys, base, best:bestRun, improves: planScoreLess(bestRun.sc, base.sc) && bestRun.sc[1] < base.sc[1]};
 }
 
+/* ---- پخش متوازنِ دسته‌ها بین نیمسال‌ها ----
+   برنامهٔ پایه (بهترین چینش از نظر تاریخ فارغ‌التحصیلی) دروس کم‌اولویت (اختیاری، معارف، عمومی، ...) را ته صف می‌گذارد و
+   آخرِ برنامه روی هم جمع می‌شوند. این‌جا همان برنامه با ترتیب متوازن دوباره چیده می‌شود، به‌شرطی که
+   فارغ‌التحصیلی دیرتر نشود، نیمسال بیشتری لازم نباشد و نامهٔ معارف/ترم زیر ۱۲ واحدِ بیشتری پیش نیاید. */
+function planBalanceMetric(res){
+  const catOf = {}, unitsOfId = {};
+  res.nodes.forEach(n=>{ catOf[n.id] = n.cat; unitsOfId[n.id] = n.units; });
+  const N = res.terms.length;
+  if(!N) return 0;
+  const per = res.terms.map(t=>{ const m = {}; t.courseIds.forEach(id=>{ const c = catOf[id]; m[c] = (m[c] || 0) + unitsOfId[id]; }); return m; });
+  const tot = {};
+  per.forEach(m=>Object.keys(m).forEach(c=>{ tot[c] = (tot[c] || 0) + m[c]; }));
+  let dev = 0;
+  Object.keys(tot).forEach(c=>{
+    const mean = tot[c] / N;
+    per.forEach(m=>{ const d = (m[c] || 0) - mean; dev += d*d; });
+  });
+  // ناهمواریِ بار کل نیمسال‌ها (بدون ترم آخر که طبیعتاً باقی‌مانده است): ترم‌های خیلی خالی و خیلی پر بد حساب می‌شوند
+  const body = res.terms.slice(0, -1).map(t=>t.units);
+  if(body.length > 1){
+    const mean = body.reduce((a,b)=>a+b, 0) / body.length;
+    body.forEach(u=>{ dev += (u - mean) * (u - mean); });
+  }
+  return dev;
+}
+function planBalanceOk(r, base){
+  if(r.blocked.length > base.blocked.length) return false;
+  if(r.terms.length > base.terms.length) return false;
+  if(r.pinFailed.length > base.pinFailed.length) return false;
+  const lastOf = x => x.terms.length ? planDateInt(x.terms[x.terms.length-1].cal.end) : 0;
+  if(lastOf(r) > lastOf(base)) return false;
+  const cnt = (x, f) => x.terms.filter(f).length;
+  if(cnt(r, t=>t.letter) > cnt(base, t=>t.letter)) return false;
+  if(cnt(r, t=>t.underMin) > cnt(base, t=>t.underMin)) return false;
+  return true;
+}
+function planBalanced(ctx, list, baseRes, variant){
+  const kinds = baseRes.terms.map(t=>t.kind);
+  if(kinds.length < 2) return baseRes;
+  let best = null;
+  // protect=true: درس‌هایی که درس دیگری وابسته‌شان است (پیش‌نیاز) هیچ‌وقت عقب نمی‌افتند و فقط بقیه پخش می‌شوند
+  const consider = v => {
+    [false, true].forEach(level=>[false, true].forEach(protect=>[0, 1, 2, 3].forEach(margin=>{
+      const r = planSchedule(ctx, list, {variant:v, balance:{kinds, margin, protect, level}});
+      if(!planBalanceOk(r, baseRes)) return;
+      const m = planBalanceMetric(r);
+      if(!best || m < best.m) best = {m, v, margin, protect, level};
+    })));
+  };
+  for(let v=0; v<PLAN_PRIOS.length; v++) consider(v);
+  if(!best || best.m >= planBalanceMetric(baseRes) - 1e-9) return baseRes;
+  return planSchedule(ctx, list, {variant:best.v, reasons:true, balance:{kinds, margin:best.margin, protect:best.protect, level:best.level}});
+}
+
 /* ---- تولید برنامه ---- */
 function planGenerate(profile, opts){
   opts = opts || {};
@@ -685,7 +814,8 @@ function planGenerate(profile, opts){
     }
   }
   const ctxF = Object.assign({}, ctx, {letterKeys:new Set(letterKeys)});
-  const res = planSchedule(ctxF, finalList, {variant:bestV, reasons:true});
+  const baseRes = planSchedule(ctxF, finalList, {variant:bestV, reasons:true});
+  const res = planBalanced(ctxF, finalList, baseRes, bestV);
   const terms = res.terms, blocked = res.blocked;
   const nodes = res.nodes;
   const R = new Map(nodes.map(n=>[n.id, n]));
@@ -749,6 +879,7 @@ function planGenerate(profile, opts){
   if(lastTerm && lastTerm.isLast) warnings.push({level:'info', text:'برای ترم آخر قبل از انتخاب واحد «فرم ترم آخر» را تکمیل کن و مجوز انتخاب واحد را در آموزشیار ثبت کن.'});
   if(terms.some(t=>t.needsApproval)) warnings.push({level:'warn', text:'سقف ۱۰ واحد تابستانِ آخر نیازمند مراجعه به آموزش و دریافت مجوز است.'});
   if(internshipPinned0 && (state.elec.has('e52') || state.current.has('e52'))) warnings.push({level:'info', text:'کارآموزی را قبلاً گذرانده‌ای یا در حال گذراندنش هستی؛ گزینهٔ «کارآموزی در تابستان» اعمال نشد.'});
+  if(!ctx.currentInProgress) warnings.push({level:'info', text:'هیچ درسی با وضعیت «در حال گذراندن» علامت نخورده، پس نیمسال ' + profile.currentTerm + ' هنوز انتخاب واحد نشده فرض شد و برنامه از همین نیمسال شروع می‌شود. اگر الان درس برداشته‌ای، آن‌ها را در چارت «در حال گذراندن» بزن تا برنامه از نیمسال بعد شروع شود.'});
   const today = opts.today !== undefined ? opts.today : planToday();
   const expected = planExpectedTerm(profile, today);
   if(expected!==null && expected!==profile.currentTerm){
@@ -773,20 +904,23 @@ function planGenerate(profile, opts){
     const eligible = n => (n.course.p || 0) === 0 && n.id.indexOf('x_pe') !== 0 && n.id !== 'e52';
     if(lastNodes.length>0 && lastNodes.every(eligible) && lastTerm.units <= PLAN_RULES.instructorMaxUnits){
       const prev = terms.length>=2 ? terms[terms.length-2] : null;
-      const prevCal = prev ? prev.cal : planTermCalendar(profile.entryYear, profile.entryTerm, profile.currentTerm);
-      instructorOption = {
-        units: lastTerm.units, courseIds: lastTerm.courseIds.slice(),
-        channel: lastTerm.units <= 4 ? 'واحد امتحانات' : 'کارشناس گروه',
-        afterLabel: prev ? planSlotLabel(prev) : 'نیمسال ' + profile.currentTerm,
-        earlierDateText: 'حدود ' + planFmtDate(prevCal.end)
-      };
+      const prevNo = ctx.firstTerm - 1;     // نیمسال قبل از اولین نیمسالِ برنامه (نیمسال جاری اگر در حال گذراندن باشد)
+      if(prev || prevNo >= 1){
+        const prevCal = prev ? prev.cal : planTermCalendar(profile.entryYear, profile.entryTerm, prevNo);
+        instructorOption = {
+          units: lastTerm.units, courseIds: lastTerm.courseIds.slice(),
+          channel: lastTerm.units <= 4 ? 'واحد امتحانات' : 'کارشناس گروه',
+          afterLabel: prev ? planSlotLabel(prev) : 'نیمسال ' + prevNo,
+          earlierDateText: 'حدود ' + planFmtDate(prevCal.end)
+        };
+      }
     }
   }
 
   const sec0 = ctx.sections[0];
   return {
     version:1, track:ctx.track,
-    current:{termNo:profile.currentTerm, cal:planTermCalendar(profile.entryYear, profile.entryTerm, profile.currentTerm),
+    current:{termNo:profile.currentTerm, inProgress:ctx.currentInProgress, cal:planTermCalendar(profile.entryYear, profile.entryTerm, profile.currentTerm),
              courseIds: planAllCourses().filter(c=>isCurrentOnly(c.id)).map(c=>c.id), units: termLoadUnits()},
     terms, meta, blocked, graduation, warnings, instructorOption,
     delays: res.delays, blockedWhy: res.blockedWhy, letterHint, letterKeys, swapStatus,
